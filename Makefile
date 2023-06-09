@@ -2,7 +2,7 @@
 CC = gcc
 
 # Compiler flags
-CFLAGS = -Wall -Wextra -std=c99 -g -I./include
+CFLAGS = -std=c99 -g -I./include
 
 # Directories
 ODIR = obj

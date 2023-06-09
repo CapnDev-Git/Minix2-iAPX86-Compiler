@@ -1,3 +1,10 @@
+# Software
+.vscode/
+main
+disassembler
+utest
+AUTHORS
+
 # Prerequisites
 *.d
 
