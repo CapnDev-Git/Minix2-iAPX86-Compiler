@@ -1,1 +1,1 @@
-# minix2-interpreter
+# Minix2-iAPX86-Interpreter
