@@ -7,8 +7,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "parser.h"
-#include "interpreter.h"
-#include "prints.h"
+#include "globals.h"
 
-void lex(char **ASM, size_t lc);
+char **lex(char *line, size_t *n);

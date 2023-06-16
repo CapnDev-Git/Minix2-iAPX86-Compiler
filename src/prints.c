@@ -34,3 +34,13 @@ void print_hexdump(const unsigned char *buffer, size_t buffer_size) {
 
   printf(ADDRESS_FORMAT "\n\n", i - HEX_PER_LINE + j);
 }
+
+void print_regs_header() {
+  printf(" AX   BX   CX   DX   SP   BP   SI   DI  FLAGS IP\n");
+}
+
+void print_regs_status(size_t *r, char *f, char *l) {
+  printf(REGS_STATUS, r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7]);
+  printf(FLAGS_STATUS, f[0], f[1], f[2], f[3]);
+  printf(LINE_STATUS, l);
+}

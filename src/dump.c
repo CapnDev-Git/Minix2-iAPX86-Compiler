@@ -1,8 +1,7 @@
 #include "dump.h"
 
 void hexdump(const char *path, unsigned char *buffer, size_t *buffer_size,
-             size_t *program_size, size_t *data_size) {
-
+             size_t *text_size, size_t *data_size) {
   // Open the file in binary mode
   FILE *pfile;
   pfile = fopen(path, "rb");
@@ -17,8 +16,8 @@ void hexdump(const char *path, unsigned char *buffer, size_t *buffer_size,
   // Close the file
   fclose(pfile);
 
-  // Update by reference the buffer size and the texte area size
-  memcpy(program_size, buffer + HEADER_PROGRAM_SIZE, 4);
+  // Update by reference the buffer size and the text area size
+  memcpy(text_size, buffer + HEADER_PROGRAM_SIZE, 4);
   memcpy(data_size, buffer + HEADER_DATA_SIZE, 4);
   *buffer_size = read_bytes;
 }

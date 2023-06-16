@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "globals.h"
+
 #define HEX_PER_LINE 16              // 16 bytes per line when printing
 #define BYTE_PER_LINE 4              // 8 bytes per line when printing
 #define HEX_FORMAT_U "%02X "         // Format for printing hex
@@ -37,7 +39,20 @@
       ((byte)&0x08 ? '1' : '0'), ((byte)&0x04 ? '1' : '0'),                    \
       ((byte)&0x02 ? '1' : '0'), ((byte)&0x01 ? '1' : '0')
 
+#define REGS_STATUS "%04lx %04lx %04lx %04lx %04lx %04lx %04lx %04lx "
+#define FLAGS_STATUS "%c%c%c%c "
+#define LINE_STATUS "%s\n"
+
 /// @brief Print the hexadecimals and ASCII representation of a buffer
 /// @param buffer The buffer to print
 /// @param buffer_size The size of the buffer
 void print_hexdump(const unsigned char *buffer, size_t buffer_size);
+
+/// @brief Print the registers header
+void print_regs_header();
+
+/// @brief Print the registers status
+/// @param r The registers
+/// @param f The flags
+/// @param l The line
+void print_regs_status(size_t *r, char *f, char *l);
