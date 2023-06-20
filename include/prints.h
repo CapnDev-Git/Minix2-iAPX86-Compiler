@@ -41,7 +41,8 @@
 
 #define REGS_STATUS "%04lx %04lx %04lx %04lx %04lx %04lx %04lx %04lx "
 #define FLAGS_STATUS "%c%c%c%c "
-#define LINE_STATUS "%s\n"
+#define LINE_STATUS "%s"
+#define MEMORY_CONTENT "%s\n"
 
 /// @brief Print the hexadecimals and ASCII representation of a buffer
 /// @param buffer The buffer to print
@@ -55,4 +56,18 @@ void print_regs_header();
 /// @param r The registers
 /// @param f The flags
 /// @param l The line
-void print_regs_status(size_t *r, char *f, char *l);
+/// @param m The memory content (optional)
+void print_regs_status(size_t *r, char *f, char *l, char *m);
+
+/// @brief Print OK
+/// @param filename The filename
+void printOK(const char *filename);
+
+/// @brief Print KO
+/// @param filename The filename
+void printKO(const char *filename);
+
+/// @brief Print the diff between the error line and the reference
+/// @param errorLine The error line
+/// @param ref The reference
+void printDiff(const char *errorLine, const char *ref);

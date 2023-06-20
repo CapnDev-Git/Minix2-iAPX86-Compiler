@@ -20,7 +20,9 @@ typedef struct {
   char *spe;
   char *mOp;
   size_t *imm;
-  size_t *reg;
+
+  size_t *len;
+  size_t **regs;
 } NodeAST;
 
 void print_AST(NodeAST **AST, size_t lenAST);

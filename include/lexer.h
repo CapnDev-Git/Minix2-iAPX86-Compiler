@@ -10,3 +10,4 @@
 #include "globals.h"
 
 char **lex(char *line, size_t *n);
+void remove_separator(char *token);

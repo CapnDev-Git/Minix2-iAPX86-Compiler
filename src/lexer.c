@@ -7,9 +7,6 @@ char **lex(char *line, size_t *n) {
   char *token = strtok(line, " ");
   while (token != NULL) {
     size_t len = strlen(token);
-    if (token[len - 1] == ',' || token[len - 1] == ':')
-      token[len - 1] = '\0';
-
     (*n)++;
     tokens = realloc(tokens, *n * sizeof(char *));
     if (tokens == NULL) {
@@ -20,4 +17,10 @@ char **lex(char *line, size_t *n) {
     token = strtok(NULL, " ");
   }
   return tokens;
+}
+
+void remove_separator(char *token) {
+  size_t len = strlen(token);
+  if (token[len - 1] == ',' || token[len - 1] == ':')
+    token[len - 1] = '\0';
 }

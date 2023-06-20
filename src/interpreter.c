@@ -8,10 +8,24 @@ const char *instructions[INSTR_SIZE] = {
     "pop", "push", "rcl", "rep",  "ret",  "sar", "sbb",        "shl",
     "shr", "std",  "sub", "test", "xchg", "xor", "(undefined)"};
 
-size_t regs[REG_SIZE] = {0, 0, 0, 0, 0xffda, 0, 0, 0};
+size_t regs[REG_SIZE] = {0, 0, 0, 0, 0xffd2, 0, 0, 0};
 char flags[FLAG_SIZE] = {'-', '-', '-', '-'};
 
 void set_flag(char f, char v) { flags[f] = v ? v : '-'; }
+
+void update_flags(uint16_t result) {
+  // Set the ZF flag
+  set_flag(ZF, result == 0);
+
+  // Set the SF flag
+  set_flag(SF, result < 0);
+
+  // Set the OF flag
+  set_flag(OF, result > 0xffff);
+
+  // Set the CF flag
+  set_flag(CF, result > 0xffff);
+}
 
 char *get_syscall_type(uint16_t type) {
   switch (type) {
@@ -43,17 +57,60 @@ size_t get_syscall_return(uint16_t type) {
   }
 }
 
+uint16_t process_memory_operand(NodeAST *node) {
+  // TO MODIFY FOR OTHER MEMORY OPERANDS COMBINATIONS
+
+  char *mOp = strdup(node->mOp);
+  mOp++;                       // remove the first bracket
+  mOp[strlen(mOp) - 1] = '\0'; // remove the last bracket
+  return (uint16_t)strtol(mOp, NULL, 16);
+}
+
+char *get_memory_content(NodeAST *node, unsigned char *data,
+                         size_t mOp_offset) {
+  // Allocate memory for the memory content display
+  char *content = malloc(32 * sizeof(char)); // true size is 13?
+  if (content == NULL)
+    errx(1, "Can't allocate memory for the memory content!");
+
+  // Format the memory content string
+  strcpy(content, " ;");
+  strcat(content, node->mOp);
+
+  // Add the memory content to the string (for now only 2 bytes)
+  sprintf(content + strlen(content), "%02x", data[mOp_offset + 1]);
+  sprintf(content + strlen(content), "%02x", data[mOp_offset]);
+
+  // Add the end of string character
+  content[strlen(content)] = '\0';
+  return content;
+}
+
 void get_msg(Message *msg_struct, uint16_t *msg) {
+  // Check if the message is a syscall
   if (msg[0] != 0x01)
     errx(1, "Message is not a syscall"); // dk otherwise
-  msg_struct->t = msg[1];
 
+  // Fill the message structure
+  msg_struct->t = msg[1];
   msg_struct->nbytes = msg[3];
   msg_struct->data = msg[5];
 }
 
 int interpret(NodeAST *node, unsigned char *text, unsigned char *data) {
-  print_regs_status(regs, flags, node->ASM);
+  size_t mOp = 0;
+
+  // Get the memory content (if any)
+  char *memory_content = NULL;
+  if (node->mOp != NULL) {
+    mOp = process_memory_operand(node);
+    memory_content = strdup(get_memory_content(node, data, mOp));
+  }
+
+  // Print the registers status
+  print_regs_status(regs, flags, node->ASM, memory_content);
+
+  // Interpret the instruction
   switch (get_index(instructions, INSTR_SIZE, node->opC)) {
   case ADC:
     // ADC macro logic here
@@ -180,8 +237,14 @@ int interpret(NodeAST *node, unsigned char *text, unsigned char *data) {
   case MOV:
     // TODO: finish rest of MOV cases
 
+    // MOV r16, r16
+    if (*(node->len) == 2) {
+      regs[*(node->regs[0])] = regs[*(node->regs[1])];
+      break;
+    }
+
     // MOV r16, imm16
-    regs[*(node->reg)] = *(node->imm);
+    regs[*(node->regs[0])] = *(node->imm);
     break;
   case MUL:
     // MUL macro logic here
@@ -223,7 +286,9 @@ int interpret(NodeAST *node, unsigned char *text, unsigned char *data) {
     // STD macro logic here
     break;
   case SUB:
-    // SUB macro logic here
+    // SUB mOp, imm1
+    data[mOp] -= *(node->imm);
+    update_flags(data[mOp]);
     break;
   case TEST:
     // TEST macro logic here

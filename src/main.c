@@ -46,6 +46,8 @@ int main(int argc, char **argv) {
 
   // Print according to the number of arguments
   if (argc == 2) {
+    size_t i = 0;
+
     // Call the disassembler executable
     char command[COMMAND_SIZE];
     snprintf(command, COMMAND_SIZE, "./disassembler %s", argv[argc - 1]);
@@ -57,13 +59,10 @@ int main(int argc, char **argv) {
     // Lex & parse the assembly code
     size_t lenAST = 0;
     NodeAST **AST = malloc(MAX_INSTR * sizeof(NodeAST *));
-
     build_AST(ASM_code, len, &AST, &lenAST);
 
     // Interpret each node of the AST
     print_regs_header();
-
-    size_t i = 0;
     while (i < lenAST && !interpret(AST[i++], text, data))
       ;
 
