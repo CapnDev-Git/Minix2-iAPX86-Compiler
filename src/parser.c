@@ -50,13 +50,17 @@ char *format_ASM(char **tokens, size_t n) {
   return formatted;
 }
 
-void build_AST(char **ASM, size_t len, NodeAST ***AST, size_t *lenAST) {
+void build_AST(char ASM[MEMORY_SIZE][256], size_t len, NodeAST ***AST,
+               size_t *lenAST) {
   char *line;
   char **tokens;
   size_t n;
 
   for (size_t i = 0; i < len; i++) {
     line = strdup(ASM[i]);
+    if (!strcmp(line, ""))
+      continue;
+
     tokens = lex(line, &n);
     if (tokens == NULL)
       errx(1, "Can't tokenize the given ASM line!");

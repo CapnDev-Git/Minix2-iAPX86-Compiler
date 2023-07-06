@@ -14,7 +14,7 @@
 /// @param path The path to the file to dump
 /// @param buffer The buffer to dump the file into (modified by ref)
 /// @param buffer_size The size of the buffer (modified by ref)
-void hexdump(const char *path, unsigned char *buffer, size_t *buffer_size,
-             size_t *text_size, size_t *data_size);
+void hexdump(const char *path); //, unsigned char *buffer, size_t *buffer_size,
+                                //  size_t *text_size, size_t *data_size);
 
 char **get_cout(char *command, size_t *lineCount);

@@ -5,48 +5,25 @@ int main(int argc, char **argv) {
   if (argc < 3)
     errx(1, "Wrong number of arguments.\nUsage: %s <flags> <file>", argv[0]);
 
-  // Patch unknown flag error + unknown flag & still compiling
-
-  // Initialize the global buffer
-  // TODO: CLEAN BUFFER TO REDUCE NUMBER OF ALLOCATIONS
-  unsigned char *buffer = malloc(BUFFER_SIZE * sizeof(unsigned char));
-  if (buffer == NULL)
-    errx(1, "Can't allocate memory for the buffer!");
-
-  // Dump the file & get the content in the buffer & text/data area sizes
-  size_t buffer_size;
-  hexdump(argv[2], buffer, &buffer_size, &TEXT_SIZE, &DATA_SIZE);
-
-  // Update the global variables
-  TEXT_BEG = HEADER_SIZE;
-  DATA_BEG = HEADER_SIZE + TEXT_SIZE;
-
-  // Fill the memories with the buffer content
-  memcpy(text_mem, buffer + HEADER_SIZE, TEXT_SIZE);
-  memcpy(data_mem, buffer + DATA_BEG, DATA_SIZE);
-  // TODO fix that ^
+  // Dump the file in both memories
+  char *path = argv[2];
+  hexdump(path);
 
   // Check the flag & process the file accordingly
-  if (!strcmp(argv[1], "-d")) { // DUMP
+  if (!strcmp(argv[1], "-d")) {
     // Exit of no file to dump provided
     if (argc == 2)
       errx(1, "File to dump not provided.\nUsage: %s -d <file>", argv[0]);
 
-    // Print the hexadecimal dump
-    print_hexdump(buffer, buffer_size);
-    printf("Text-area size: 0x%08lx = %zu bytes\n", TEXT_SIZE, TEXT_SIZE);
-    printf("Data size: 0x%08lx = %zu bytes\n", DATA_SIZE, DATA_SIZE);
+    // ONLY DISASSEMBLER
+    // TODO
   } else if (!strcmp(argv[1], "-m")) { // INTERPRET
     // Exit of no file to interpret provided
     if (argc == 2)
       errx(1, "File to interpret not provided.\nUsage: %s -m <file>", argv[0]);
 
-    // Call the disassembler executable
-    char command[COMMAND_SIZE];
-    snprintf(command, COMMAND_SIZE, "./disassembler %s", argv[2]);
-    size_t len = 0;
-    char **ASM_code = get_cout(command, &len);
-    // TODO: merge DISASSEMBLING & INTERPRETING !!
+    // Disassemble the binary
+    translate_bin();
 
     // Setup the memory for the interpreter
     Vector args;
@@ -57,10 +34,18 @@ int main(int argc, char **argv) {
     process_args(&args, &envp);
     // print_hexdump(data_mem, MEMORY_SIZE);
 
+    // Print the ASM code
+    // for (size_t i = 0; i < 1000; i++) {
+    //   if (strcmp(ASM[i], ""))
+    //     printf("%lx: %s", i, ASM[i]);
+    //   else
+    //     printf("%lx: \n", i);
+    // }
+
     // Lex & parse the assembly code
     size_t lenAST = 0;
     NodeAST **AST = malloc(MAX_INSTR * sizeof(NodeAST *));
-    build_AST(ASM_code, len, &AST, &lenAST);
+    build_AST(ASM, MEMORY_SIZE, &AST, &lenAST);
 
     // Interpret each node of the AST
     size_t i = 0;
@@ -70,13 +55,12 @@ int main(int argc, char **argv) {
 
     // Free the AST & the ASM code
     free_AST(AST, lenAST);
-    free_2d(ASM_code, len);
+    // free_2d(ASM, MEMORY_SIZE);
   } else {
     // Raise an error if the flag is unknown
     errx(1, "Unknown flag: %s\nUsage: %s <flags> <file>", argv[1], argv[0]);
   }
 
   // Free & exit
-  free(buffer);
   return 0;
 }

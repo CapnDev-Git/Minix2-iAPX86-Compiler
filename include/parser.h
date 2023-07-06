@@ -12,6 +12,7 @@
 #include "prints.h"
 
 void print_AST(NodeAST **AST, size_t lenAST);
-void build_AST(char **ASM, size_t len, NodeAST ***AST, size_t *lenAST);
-void print_node(NodeAST *node);
+void build_AST(char ASM[MEMORY_SIZE][256], size_t len, NodeAST ***AST,
+               size_t *lenAST);
 void free_AST(NodeAST **AST, size_t lenAST);
+void print_node(NodeAST *node);

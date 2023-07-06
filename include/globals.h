@@ -60,6 +60,13 @@ typedef struct {
 #define MAX_INSTR 100000
 #define MAX_ARGS 50
 
+// Disassembler sizes
+#define EA_STRING_SIZE 20 // Chosen arbitrarily
+#define R8_SIZE 8
+#define R16_SIZE 8
+#define SR_SIZE 4
+#define OPCODES_SIZE 16
+
 // Interpreter sizes
 #define INSTR_SIZE 47
 #define FLAG_SIZE 4
@@ -72,12 +79,22 @@ extern size_t TEXT_SIZE;
 extern size_t DATA_SIZE;
 extern size_t TEXT_BEG;
 extern size_t DATA_BEG;
-extern const char *instructions[INSTR_SIZE];
-extern const char *registers[REG_SIZE];
-extern const SyscallType syscallTypes[SYSCALLS_SIZE];
-extern const SyscallReturn syscallReturns[SYSCALLS_SIZE];
 extern unsigned char text_mem[MEMORY_SIZE];
 extern unsigned char data_mem[MEMORY_SIZE];
+
+extern char ASM[MEMORY_SIZE][256];
+extern size_t ASM_INDEX;
+
+extern const char *REG8[R8_SIZE];
+extern const char *REG16[R16_SIZE];
+extern const char *SEGREG[SR_SIZE];
+
+extern const char *instructions[INSTR_SIZE];
+extern const char *registers[REG_SIZE];
+
+extern const SyscallType syscallTypes[SYSCALLS_SIZE];
+extern const SyscallReturn syscallReturns[SYSCALLS_SIZE];
+
 extern uint16_t regs[REG_SIZE];
 extern unsigned char flags[FLAG_SIZE];
 extern uint16_t *sp;

@@ -1,7 +1,11 @@
 #include "dump.h"
 
-void hexdump(const char *path, unsigned char *buffer, size_t *buffer_size,
-             size_t *text_size, size_t *data_size) {
+void hexdump(const char *path) {
+  // Initialize the buffer
+  unsigned char *buffer = malloc(MEMORY_SIZE * sizeof(unsigned char));
+  if (buffer == NULL)
+    errx(1, "Can't allocate memory for the buffer!");
+
   // Open the file in binary mode
   FILE *pfile;
   pfile = fopen(path, "rb");
@@ -16,10 +20,17 @@ void hexdump(const char *path, unsigned char *buffer, size_t *buffer_size,
   // Close the file
   fclose(pfile);
 
-  // Update by reference the buffer size and the text area size
-  memcpy(text_size, buffer + HEADER_PROGRAM_SIZE, 4);
-  memcpy(data_size, buffer + HEADER_DATA_SIZE, 4);
-  *buffer_size = read_bytes;
+  // Update by reference the text & data area sizes
+  memcpy(&TEXT_SIZE, buffer + HEADER_PROGRAM_SIZE, 4);
+  memcpy(&DATA_SIZE, buffer + HEADER_DATA_SIZE, 4);
+
+  // Update by reference the buffer size
+  TEXT_BEG = HEADER_SIZE;
+  DATA_BEG = HEADER_SIZE + TEXT_SIZE;
+
+  // Fill the memories with the buffer content
+  memcpy(text_mem, buffer + HEADER_SIZE, TEXT_SIZE);
+  memcpy(data_mem, buffer + DATA_BEG, DATA_SIZE);
 }
 
 char **get_cout(char *command, size_t *lc) {

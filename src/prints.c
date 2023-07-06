@@ -1,9 +1,6 @@
 #include "prints.h"
 
 void print_hexdump(const unsigned char *buffer, size_t buffer_size) {
-  // Print the headers
-  // print_headers(HEX_FORMAT_U, 2, HEX_PER_LINE);
-
   // Print the hexadecimal dump
   size_t i, j;
   for (i = 0; i < buffer_size; i += HEX_PER_LINE) {
@@ -97,4 +94,21 @@ void printDiff(const char *errorLine, const char *ref) {
   }
 
   printf("\033[0m\n");
+}
+
+void print4b(const unsigned char *p, size_t a, size_t il, size_t *ip,
+             char *line) {
+  // Print the address
+  sprintf(line, DIS_ADDRESS_FORMAT, a);
+  for (size_t j = 0; j < il; j++) {
+    sprintf(line + strlen(line), INSTRUCTION_FORMAT, p[a + j]);
+  }
+
+  // Print the padding
+  size_t padding_size = 14 - 2 * il;
+  for (size_t j = 0; j < padding_size; j++)
+    sprintf(line + strlen(line), SPACE);
+
+  // Increment the instruction pointer by the instruction length
+  *ip += il;
 }

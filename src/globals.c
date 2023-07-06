@@ -1,11 +1,20 @@
 #include "globals.h"
 
-// Initialize the global variables
+// BOTH INTERPRETER AND DISASSEMBLER
 size_t TEXT_SIZE = 0;
 size_t DATA_SIZE = 0;
 size_t TEXT_BEG = 0;
 size_t DATA_BEG = 0;
 
+// DISASSEMBLER
+char ASM[MEMORY_SIZE][256] = {0};
+size_t ASM_INDEX = 0;
+
+const char *REG8[R8_SIZE] = {"al", "cl", "dl", "bl", "ah", "ch", "dh", "bh"};
+const char *REG16[R16_SIZE] = {"ax", "cx", "dx", "bx", "sp", "bp", "si", "di"};
+const char *SEGREG[SR_SIZE] = {"es", "cs", "ss", "ds"};
+
+// INTERPRETER
 const char *instructions[INSTR_SIZE] = {
     "adc", "add",  "and", "call", "cbw",  "cld", "cmp",        "cwd",
     "dec", "div",  "hlt", "in",   "inc",  "int", "jae",        "jb",

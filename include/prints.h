@@ -36,3 +36,6 @@ void printKO(const char *filename);
 /// @param errorLine The error line
 /// @param ref The reference
 void printDiff(const char *errorLine, const char *ref);
+
+void print4b(const unsigned char *p, size_t a, size_t il, size_t *ip,
+             char *line);
