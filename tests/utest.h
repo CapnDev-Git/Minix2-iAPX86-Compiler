@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../include/globals.h"
 #include "../include/prints.h"
 
 #define MAX_LENGTH 1000000

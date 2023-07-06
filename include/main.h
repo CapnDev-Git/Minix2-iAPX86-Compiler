@@ -11,10 +11,9 @@
 #include "globals.h"
 #include "interpreter.h"
 #include "lexer.h"
+#include "memory.h"
 #include "parser.h"
 #include "prints.h"
-
-#define MAX_INSTR 100000
 
 /// @brief Main function
 /// @param argc Number of arguments

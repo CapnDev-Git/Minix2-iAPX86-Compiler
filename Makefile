@@ -14,10 +14,10 @@ TESTDIR = tests
 LIBS =
 
 # Dependencies
-_DEPS = prints.h dump.h interpreter.h lexer.h parser.h globals.h
+_DEPS = prints.h dump.h interpreter.h lexer.h parser.h globals.h memory.h
 DEPS = $(patsubst %,$(INCDIR)/%,$(_DEPS))
 
-_OBJ = main.o prints.o dump.o interpreter.o lexer.o parser.o globals.o
+_OBJ = main.o prints.o dump.o interpreter.o lexer.o parser.o globals.o memory.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 _TESTOBJ = utest.o prints.o

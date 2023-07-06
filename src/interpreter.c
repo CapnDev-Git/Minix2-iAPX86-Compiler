@@ -1,89 +1,141 @@
 #include "interpreter.h"
 
-const char *instructions[INSTR_SIZE] = {
-    "adc", "add",  "and", "call", "cbw",  "cld", "cmp",        "cwd",
-    "dec", "div",  "hlt", "in",   "inc",  "int", "jae",        "jb",
-    "jbe", "je",   "jle", "jnb",  "jne",  "jnl", "jnle",       "jnbe",
-    "jmp", "jl",   "lea", "loop", "mov",  "mul", "neg",        "or",
-    "pop", "push", "rcl", "rep",  "ret",  "sar", "sbb",        "shl",
-    "shr", "std",  "sub", "test", "xchg", "xor", "(undefined)"};
+void set_flag(char f, char v) {
+  static const char flagChars[] = {'O', 'S', 'Z', 'C'};
+  flags[f] = v ? flagChars[f] : '-';
+}
 
-size_t regs[REG_SIZE] = {0, 0, 0, 0, 0xffd2, 0, 0, 0};
-char flags[FLAG_SIZE] = {'-', '-', '-', '-'};
-
-void set_flag(char f, char v) { flags[f] = v ? v : '-'; }
-
-void update_flags(uint16_t result) {
-  // Set the ZF flag
-  set_flag(ZF, result == 0);
+void update_flags(uint16_t result) { // might need to optimize the checks
+  // Set the OF flag
 
   // Set the SF flag
-  set_flag(SF, result < 0);
+  set_flag(SF, (int16_t)result < 0);
 
-  // Set the OF flag
-  set_flag(OF, result > 0xffff);
+  // Set the ZF flag
+  set_flag(ZF, result == 0);
 
   // Set the CF flag
   set_flag(CF, result > 0xffff);
 }
 
-char *get_syscall_type(uint16_t type) {
-  switch (type) {
-  case 1:
-    return EXIT;
-  case 4:
-    return WRITE;
-  case 17:
-    return BRK;
-  case 54:
-    return IOCTL;
-  default:
-    errx(1, "Unknown syscall type: %d", type);
+void process_operation(uint16_t *op1, uint16_t *op2, char op) {
+  switch (op) {
+  case OP_CMP:
+    set_flag(ZF, *op1 == 0);
+    set_flag(CF, *op1 - *op2 < 0);
+    break;
+
+  case OP_PLUS:
+    *op1 += *op2;
+    set_flag(SF, (int16_t)*op1 < 0);
+    set_flag(ZF, *op1 == 0);
+    set_flag(CF, (uint32_t)(*op1) > 0xffff); // should be that, never seen
+    break;
+
+  case OP_MINUS:
+    *op1 -= *op2;
+    // set_flag(SF, (int16_t)*op1 < 0);
+    // set_flag(ZF, *op1 == 0);
+    // set_flag(CF, *op1 - *op2 < 0);
+    break;
+
+  case OP_MULT:
+    printf("MULT\n");
+    // *op1 *= *op2;
+    break;
+
+  case OP_DIV:
+    printf("DIV\n");
+    // *op1 /= *op2;
+    break;
   }
+}
+
+const char *get_syscall_type(uint16_t type) {
+  for (size_t i = 0; i < SYSCALLS_SIZE; ++i) {
+    if (type == syscallTypes[i].type) {
+      return syscallTypes[i].name;
+    }
+  }
+
+  // Unknown syscall type
+  errx(1, "Unknown syscall type: %d", type);
 }
 
 size_t get_syscall_return(uint16_t type) {
-  switch (type) {
-  case 1: // exit
-    return 0;
-  case 4: // write
-    return 6;
-  case 17: // brk
-    return 0;
-  case 54: // ioctl
-    return -1;
-  default:
-    errx(1, "Unknown syscall type: %d", type);
+  for (size_t i = 0; i < SYSCALLS_SIZE; ++i) {
+    if (type == syscallReturns[i].type) {
+      return syscallReturns[i].returnValue;
+    }
   }
+
+  // Unknown syscall type
+  errx(1, "Unknown syscall type: %d", type);
 }
 
 uint16_t process_memory_operand(NodeAST *node) {
-  // TO MODIFY FOR OTHER MEMORY OPERANDS COMBINATIONS
+  // Remove the brackets from the memory operand
+  (++node->mOp)[strlen(node->mOp) - 1] = '\0';
 
-  char *mOp = strdup(node->mOp);
-  mOp++;                       // remove the first bracket
-  mOp[strlen(mOp) - 1] = '\0'; // remove the last bracket
-  return (uint16_t)strtol(mOp, NULL, 16);
+  // Check if the memory operand contains a "+" or "-" sign
+  char *opstr = strchr(node->mOp, '+');
+  if (!opstr)
+    opstr = strchr(node->mOp, '-');
+
+  // If it does, sum or subtract the number from the register value
+  if (opstr) {
+    // Split the operand
+    char opsym = *opstr;
+    *opstr = '\0';
+    const char *rname = node->mOp;
+    const char *nstr = opstr + 1;
+    int n = atoi(nstr);
+
+    // Check if the register name is valid
+    int registerIndex = get_index(registers, REG_SIZE, rname);
+    if (registerIndex != -1) {
+      // Handle the addition or subtraction based on the sign
+      if (opsym == '+')
+        return (uint16_t)(regs[registerIndex] + n);
+      else if (opsym == '-')
+        return (uint16_t)(regs[registerIndex] - n);
+    }
+  }
+
+  // If the operand doesn't contain a "+" or "-" sign, check if it's a register
+  int registerIndex = get_index(registers, REG_SIZE, node->mOp);
+  if (registerIndex != -1)
+    return (uint16_t)regs[registerIndex];
+
+  // Otherwise, directly return the value of the memory address
+  return (uint16_t)strtol(node->mOp, NULL, 16);
 }
 
-char *get_memory_content(NodeAST *node, unsigned char *data,
-                         size_t mOp_offset) {
+char *get_memory_content(NodeAST *node, unsigned char *data, size_t adr) {
   // Allocate memory for the memory content display
-  char *content = malloc(32 * sizeof(char)); // true size is 13?
+  char *content = malloc(32 * sizeof(char));
   if (content == NULL)
     errx(1, "Can't allocate memory for the memory content!");
 
   // Format the memory content string
-  strcpy(content, " ;");
-  strcat(content, node->mOp);
+  strcpy(content, " ;[");
+  sprintf(content + strlen(content), "%04lx]", adr);
 
   // Add the memory content to the string (for now only 2 bytes)
-  sprintf(content + strlen(content), "%02x", data[mOp_offset + 1]);
-  sprintf(content + strlen(content), "%02x", data[mOp_offset]);
+  sprintf(content + strlen(content), "%02x", data[adr + 1]);
+  sprintf(content + strlen(content), "%02x", data[adr]);
 
-  // Add the end of string character
-  content[strlen(content)] = '\0';
-  return content;
+  // Create a copy of the string using strdup
+  char *copiedContent = strdup(content);
+  if (copiedContent == NULL)
+    errx(1, "Can't allocate memory for copied content!");
+
+  // Free the original content
+  free(content);
+
+  // Set the final formatted string back to node->mOp
+  node->mOp = copiedContent;
+  return copiedContent;
 }
 
 void get_msg(Message *msg_struct, uint16_t *msg) {
@@ -97,14 +149,13 @@ void get_msg(Message *msg_struct, uint16_t *msg) {
   msg_struct->data = msg[5];
 }
 
-int interpret(NodeAST *node, unsigned char *text, unsigned char *data) {
-  size_t mOp = 0;
-
-  // Get the memory content (if any)
+int interpret(NodeAST *node) {
+  // Get the memory content of the eventual memory operand
+  uint16_t mOp = 0;
   char *memory_content = NULL;
   if (node->mOp != NULL) {
     mOp = process_memory_operand(node);
-    memory_content = strdup(get_memory_content(node, data, mOp));
+    memory_content = strdup(get_memory_content(node, data_mem, mOp));
   }
 
   // Print the registers status
@@ -116,7 +167,12 @@ int interpret(NodeAST *node, unsigned char *text, unsigned char *data) {
     // ADC macro logic here
     break;
   case ADD:
-    // ADD macro logic here
+    // ADD r16, r16
+    if (*(node->nreg) == 2) {
+      process_operation(&regs[*(node->regs[0])], &regs[*(node->regs[1])],
+                        OP_PLUS);
+      break;
+    }
     break;
   case AND:
     // AND macro logic here
@@ -131,7 +187,13 @@ int interpret(NodeAST *node, unsigned char *text, unsigned char *data) {
     // CLD macro logic here
     break;
   case CMP:
-    // CMP macro logic here
+    // Compute the difference between op1 and op2 and update the flags
+    // accordingly
+    if (*(node->nreg) == 1 && node->imm != NULL) {
+      process_operation(&regs[*(node->regs[0])], node->imm, OP_CMP);
+      break;
+    }
+
     break;
   case CWD:
     // CWD macro logic here
@@ -154,7 +216,7 @@ int interpret(NodeAST *node, unsigned char *text, unsigned char *data) {
   case INT:
     // Get the message structure pointer from the BX register
     uint16_t currData[DATA_LINE_SIZE];
-    memcpy(currData, data + regs[BX], DATA_LINE_SIZE);
+    memcpy(currData, data_mem + regs[BX], DATA_LINE_SIZE);
 
     // Process the current message
     Message *msg = malloc(sizeof(Message));
@@ -163,7 +225,7 @@ int interpret(NodeAST *node, unsigned char *text, unsigned char *data) {
     get_msg(msg, currData);
 
     // Print the syscall
-    char *syscall = get_syscall_type(msg->t);
+    const char *syscall = get_syscall_type(msg->t); // will have to be rechecked
     size_t ret = get_syscall_return(msg->t);
     switch (msg->t) {
     case 1: // EXIT
@@ -172,7 +234,7 @@ int interpret(NodeAST *node, unsigned char *text, unsigned char *data) {
 
     case 4: // WRITE
       char *str = malloc(msg->nbytes + 1);
-      memcpy(str, data + msg->data, msg->nbytes);
+      memcpy(str, data_mem + msg->data, msg->nbytes);
       printf("<%s(1, 0x%04lx, %zu)%s => %zu>\n", syscall, msg->data,
              msg->nbytes, str, ret);
       break;
@@ -185,10 +247,6 @@ int interpret(NodeAST *node, unsigned char *text, unsigned char *data) {
     case 54: // IOCTL, figure out what to do here
       // format <ioctl(1, 0x0000, 0x0000)>, check source files
       printf("<%s>\n", syscall);
-      break;
-
-    default:
-      errx(1, "Unknown syscall type: %d\n", msg->t);
       break;
     }
     break;
@@ -208,7 +266,8 @@ int interpret(NodeAST *node, unsigned char *text, unsigned char *data) {
     // JLE macro logic here
     break;
   case JNB:
-    // JNB macro logic here
+    // if (!flags[CF])
+    // node = node->next;
     break;
   case JNE:
     // JNE macro logic here
@@ -229,17 +288,22 @@ int interpret(NodeAST *node, unsigned char *text, unsigned char *data) {
     // JL macro logic here
     break;
   case LEA:
-    // LEA macro logic here
+    // LEA r16, mOp
+    regs[*(node->regs[0])] = mOp;
     break;
   case LOOP:
     // LOOP macro logic here
     break;
   case MOV:
-    // TODO: finish rest of MOV cases
-
-    // MOV r16, r16
-    if (*(node->len) == 2) {
+    if (*(node->nreg) == 2) {
+      // MOV r16, r16
       regs[*(node->regs[0])] = regs[*(node->regs[1])];
+      break;
+    }
+
+    if (*(node->nreg) == 1 && node->mOp != NULL) {
+      // MOV r16, mOp
+      memcpy(regs + *(node->regs[0]), data_mem + mOp, 2);
       break;
     }
 
@@ -286,9 +350,9 @@ int interpret(NodeAST *node, unsigned char *text, unsigned char *data) {
     // STD macro logic here
     break;
   case SUB:
-    // SUB mOp, imm1
-    data[mOp] -= *(node->imm);
-    update_flags(data[mOp]);
+    // SUB mOp, imm16
+    uint16_t *op1_ptr = (uint16_t *)(data_mem + mOp);
+    process_operation(op1_ptr, node->imm, OP_MINUS);
     break;
   case TEST:
     // TEST macro logic here
@@ -297,7 +361,9 @@ int interpret(NodeAST *node, unsigned char *text, unsigned char *data) {
     // XCHG macro logic here
     break;
   case XOR:
-    // XOR macro logic here
+    // XOR r16, r16
+    regs[*(node->regs[0])] ^= regs[*(node->regs[1])];
+    update_flags(regs[*(node->regs[0])]);
     break;
   case UNDEFINED:
     // UNDEFINED macro logic here
