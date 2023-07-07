@@ -1,4 +1,4 @@
-#include "translate.h"
+#include "disassembler.h"
 
 /// @brief Get addressing mode
 /// @param a address after mod reg r/m byte
@@ -46,7 +46,7 @@ void get_adm(size_t a, unsigned char mod, unsigned char rm, char *ea,
   }
 }
 
-void translate_bin() {
+void disassemble() {
   // Initialize the segment registers (for segment override prefix)
   char line[256];
   unsigned char op;
@@ -66,7 +66,10 @@ void translate_bin() {
       if (a + 1 >= TEXT_SIZE) {
         print4b(text_mem, a, 1, &ip, line);
         sprintf(line + strlen(line), "(undefined)");
+
+        // Add the line to the lsit of ASM ligns
         strncpy(ASM[a], line, sizeof(ASM[a]));
+        ASM_MAX_INDEX = a;
 
         return;
       }
@@ -86,7 +89,10 @@ void translate_bin() {
           sprintf(line + strlen(line), "push %s",
                   SEGREG[(text_mem[a] >> 3) & 0b11]);
       }
+
+      // Add the line to the lsit of ASM ligns
       strncpy(ASM[a], line, sizeof(ASM[a]));
+      ASM_MAX_INDEX = a;
       a++;
       continue;
     }
@@ -99,7 +105,10 @@ void translate_bin() {
     if (pip == ip) {
       print4b(text_mem, a, 1, &ip, line);
       sprintf(line + strlen(line), "(undefined)");
+
+      // Add the line to the lsit of ASM ligns
       strncpy(ASM[a], line, sizeof(ASM[a]));
+      ASM_MAX_INDEX = a;
     }
 
     // Update the address & previous instruction pointer (for undefined

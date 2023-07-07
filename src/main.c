@@ -15,47 +15,46 @@ int main(int argc, char **argv) {
     if (argc == 2)
       errx(1, "File to dump not provided.\nUsage: %s -d <file>", argv[0]);
 
-    // ONLY DISASSEMBLER
-    // TODO
+    // Disassemble the binary
+    disassemble();
+
+    // Print the ASM code to STDERR (optimized printing)
+    for (size_t i = 0; i <= ASM_MAX_INDEX; i++) {
+      if (strcmp(ASM[i], ""))
+        fprintf(stderr, "%s\n", ASM[i]);
+    }
   } else if (!strcmp(argv[1], "-m")) { // INTERPRET
     // Exit of no file to interpret provided
     if (argc == 2)
       errx(1, "File to interpret not provided.\nUsage: %s -m <file>", argv[0]);
 
     // Disassemble the binary
-    translate_bin();
+    disassemble();
 
     // Setup the memory for the interpreter
-    Vector args;
-    vector_init(&args);
-    for (size_t i = 2; i < argc; ++i)
-      vector_pushback(&args, argv[i]);
-    Vector envp = get_envp();
-    process_args(&args, &envp);
-    // print_hexdump(data_mem, MEMORY_SIZE);
+    setup_memory(argc, argv);
+    // print_hexdump(data_mem, MEMORY_SIZE); // DEBUG
 
-    // Print the ASM code
-    // for (size_t i = 0; i < 1000; i++) {
-    //   if (strcmp(ASM[i], ""))
-    //     printf("%lx: %s", i, ASM[i]);
-    //   else
-    //     printf("%lx: \n", i);
-    // }
-
-    // Lex & parse the assembly code
-    size_t lenAST = 0;
-    NodeAST **AST = malloc(MAX_INSTR * sizeof(NodeAST *));
-    build_AST(ASM, MEMORY_SIZE, &AST, &lenAST);
-
-    // Interpret each node of the AST
-    size_t i = 0;
+    // Interpret the binary
     print_regs_header();
-    while (i < lenAST && !interpret(AST[i++]))
-      ;
 
-    // Free the AST & the ASM code
-    free_AST(AST, lenAST);
-    // free_2d(ASM, MEMORY_SIZE);
+    while (1) {
+      NodeAST node;
+      NodeAST_init(&node);
+      get_node(&node, ASM[IP]);
+      int ret = interpret(&node);
+
+      // Exit if the instruction was an exit syscall
+      if (ret == EXIT_SYSCALL)
+        break;
+
+      // Only increment the IP if the instruction was not a jump
+      if (ret != EXIT_IPCHANGED)
+        IP += node.opLen;
+    }
+
+    // DONT FORGET TO ACTUALLY EXECUTE IT AT THE END
+    // TODO, do like ASM global array to print to stderr when done
   } else {
     // Raise an error if the flag is unknown
     errx(1, "Unknown flag: %s\nUsage: %s <flags> <file>", argv[1], argv[0]);

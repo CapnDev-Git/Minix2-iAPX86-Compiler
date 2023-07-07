@@ -10,5 +10,7 @@
 #include "globals.h"
 #include "prints.h"
 
+Vector get_args(int argc, char **argv);
 Vector get_envp();
 void process_args(Vector *args, Vector *envp);
+void setup_memory(int argc, char **argv);

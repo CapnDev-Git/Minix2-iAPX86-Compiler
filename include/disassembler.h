@@ -23,4 +23,4 @@ void get_adm(size_t a, unsigned char mod, unsigned char rm, char *ea,
              size_t *ds);
 
 /// @brief Translates the given program buffer
-void translate_bin();
+void disassemble();

@@ -11,8 +11,8 @@
 #include "lexer.h"
 #include "prints.h"
 
-void print_AST(NodeAST **AST, size_t lenAST);
-void build_AST(char ASM[MEMORY_SIZE][256], size_t len, NodeAST ***AST,
-               size_t *lenAST);
-void free_AST(NodeAST **AST, size_t lenAST);
+void get_node(NodeAST *node, char *line);
 void print_node(NodeAST *node);
+
+void print_AST(NodeAST **AST, size_t lenAST);
+void free_AST(NodeAST **AST, size_t lenAST);

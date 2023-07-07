@@ -1,5 +1,13 @@
 #include "memory.h"
 
+Vector get_args(int argc, char **argv) {
+  Vector args;
+  vector_init(&args);
+  for (size_t i = 2; i < argc; ++i)
+    vector_pushback(&args, argv[i]);
+  return args;
+}
+
 Vector get_envp() {
   Vector envp;
   vector_init(&envp);
@@ -22,10 +30,6 @@ void process_args(Vector *args, Vector *envp) {
   // Calculate the length of each argument string + 1 for \0
   for (size_t i = 0; i < args->size; ++i)
     len += strlen(args->data[i]) + 1;
-
-  // TO FIGURE OUT v
-  // data_mem[--(*sp)] = '\0';
-  // data_mem[--(*sp)] = '\0';
 
   // Ensure the length is even, and if not, add a null terminator to the stack
   if (len % 2)
@@ -68,4 +72,17 @@ void process_args(Vector *args, Vector *envp) {
   // Push the number of arguments onto the stack
   data_mem[--(*sp)] = args->size >> 8;
   data_mem[--(*sp)] = args->size;
+}
+
+void setup_memory(int argc, char **argv) {
+  // Get the arguments and environment variables
+  Vector args = get_args(argc, argv);
+  Vector envp = get_envp();
+
+  // Process the arguments and environment variables
+  process_args(&args, &envp);
+
+  // Free the vectors
+  vector_free(&args);
+  vector_free(&envp);
 }

@@ -43,7 +43,7 @@ void cmp_files(const char *filename, int verbose) {
   // Construct the command to capture the output of the disassembler
   char disassemblerCommand[MAX_LENGTH];
   snprintf(disassemblerCommand, sizeof(disassemblerCommand),
-           "./interpreter -m %s", filename);
+           "./z123029_mmvm -m %s", filename);
 
   // Capture the output of the disassembler
   char *disassemblerOutput = get_cout(disassemblerCommand);

@@ -12,6 +12,7 @@ typedef struct {
   size_t adr;
   char *ASM; // to remove
   char *opC;
+  size_t opLen;
 
   char *op1;
   char *op2;
@@ -74,6 +75,10 @@ typedef struct {
 #define DATA_LINE_SIZE 16
 #define REG_SIZE 8
 
+#define EXIT_CONTINUE 0
+#define EXIT_SYSCALL -1
+#define EXIT_IPCHANGED -2
+
 // Global variables
 extern size_t TEXT_SIZE;
 extern size_t DATA_SIZE;
@@ -83,7 +88,10 @@ extern unsigned char text_mem[MEMORY_SIZE];
 extern unsigned char data_mem[MEMORY_SIZE];
 
 extern char ASM[MEMORY_SIZE][256];
-extern size_t ASM_INDEX;
+extern size_t ASM_MAX_INDEX;
+
+extern char INTPTR[MEMORY_SIZE][256];
+extern size_t INTPTR_MAX_INDEX;
 
 extern const char *REG8[R8_SIZE];
 extern const char *REG16[R16_SIZE];
@@ -98,6 +106,7 @@ extern const SyscallReturn syscallReturns[SYSCALLS_SIZE];
 extern uint16_t regs[REG_SIZE];
 extern unsigned char flags[FLAG_SIZE];
 extern uint16_t *sp;
+extern uint16_t IP;
 
 // Operations
 #define OP_PLUS '+'
@@ -215,3 +224,6 @@ size_t get_index(const char **array, size_t size, const char *element);
 void vector_init(Vector *vector);
 void vector_pushback(Vector *vector, void *element);
 void vector_free(Vector *vector);
+
+// NodeAST functions
+void NodeAST_init(NodeAST *node);

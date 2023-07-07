@@ -7,10 +7,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "disassembler.h"
 #include "globals.h"
 #include "patterns.h"
 #include "prints.h"
-#include "translate.h"
 
 /// @brief General purpose printing function for instructions using the sw flags
 /// @param a The address of the instruction

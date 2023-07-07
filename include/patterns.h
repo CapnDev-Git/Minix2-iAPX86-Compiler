@@ -7,10 +7,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "disassembler.h"
 #include "globals.h"
 #include "print_patterns.h"
 #include "prints.h"
-#include "translate.h"
 
 /// @brief Parsing function for the 0x0 pattern (current opcode 4-MSBs)
 /// @param a The current address

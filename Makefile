@@ -2,7 +2,7 @@
 CC = gcc
 
 # Compiler flags
-CFLAGS =  -g -I./include #-Wall -Wextra -Werror -std=c99
+CFLAGS = -g -I$(INCDIR) #-Wall -Wextra -Werror -std=c99
 
 # Directories
 ODIR = obj
@@ -13,35 +13,38 @@ TESTDIR = tests
 # Libraries
 LIBS =
 
-# Dependencies
-_DEPS = prints.h dump.h interpreter.h lexer.h parser.h globals.h memory.h patterns.h print_patterns.h translate.h
-DEPS = $(patsubst %,$(INCDIR)/%,$(_DEPS))
+# Source files
+SRCS := $(wildcard $(SRCDIR)/**/*.c $(SRCDIR)/*.c)
+SRCDIRS := $(sort $(dir $(SRCS)))
+OBJS := $(patsubst $(SRCDIR)/%.c,$(ODIR)/%.o,$(SRCS))
 
-_OBJ = main.o prints.o dump.o interpreter.o lexer.o parser.o globals.o memory.o patterns.o print_patterns.o translate.o
-OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
+# Test source files
+TESTSRCS := $(wildcard $(TESTDIR)/*.c)
+TESTOBJS := $(patsubst $(TESTDIR)/%.c, $(ODIR)/%.o, $(TESTSRCS))
 
-_TESTOBJ = utest.o prints.o
-TESTOBJ = $(patsubst %,$(ODIR)/%,$(_TESTOBJ))
+# Object directory creation
+$(shell mkdir -p $(ODIR) $(SRCDIRS:$(SRCDIR)%=$(ODIR)%))
 
 # Rules
-$(ODIR)/%.o: $(SRCDIR)/%.c $(DEPS)
+$(ODIR)/%.o: $(SRCDIR)/%.c
 	$(CC) -c -o $@ $< $(CFLAGS)
 
-$(ODIR)/%.o: $(TESTDIR)/%.c $(DEPS)
+$(ODIR)/%.o: $(TESTDIR)/%.c $(INCDIR)/prints.h $(INCDIR)/globals.h $(TESTDIR)/utest.h
 	$(CC) -c -o $@ $< $(CFLAGS)
 
 # Targets
-all: interpreter $(TESTDIR)/utest
+all: z123029_mmvm $(TESTDIR)/utest
 
-interpreter: $(OBJ)
+z123029_mmvm: $(OBJS)
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
 
-$(TESTDIR)/utest: $(TESTOBJ)
+$(TESTDIR)/utest: $(TESTOBJS) $(ODIR)/global/globals.o $(ODIR)/global/prints.o
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
 
 .PHONY: clean
 
 clean:
 	rm -f $(ODIR)/*.o
+	rm -rf $(ODIR)/*
+	rm -f z123029_mmvm
 	rm -f $(TESTDIR)/utest
-	rm -f interpreter

@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "disassembler.h"
 #include "dump.h"
 #include "globals.h"
 #include "interpreter.h"
@@ -15,7 +16,6 @@
 #include "parser.h"
 #include "patterns.h"
 #include "print_patterns.h"
-#include "translate.h"
 #include "prints.h"
 
 /// @brief Main function

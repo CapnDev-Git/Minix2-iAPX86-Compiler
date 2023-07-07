@@ -112,3 +112,27 @@ void print4b(const unsigned char *p, size_t a, size_t il, size_t *ip,
   // Increment the instruction pointer by the instruction length
   *ip += il;
 }
+
+void print_node(NodeAST *node) {
+  printf("Address: %lx\n", node->adr);
+  printf("ASM: %s\n", node->ASM);
+  printf("Instruction: %s\n", node->opC);
+
+  if (node->op1 != NULL)
+    printf("Opcode 1: %s\n", node->op1);
+  if (node->op2 != NULL)
+    printf("Opcode 2: %s\n", node->op2);
+
+  if (node->spe != NULL)
+    printf("Specifier: %s\n", node->spe);
+  if (node->mOp != NULL)
+    printf("Memory operand: %s\n", node->mOp);
+  if (node->imm != NULL)
+    printf("Immediate data: %x\n", *(node->imm));
+  if (node->regs != NULL) {
+    for (size_t j = 0; j < *(node->nreg); j++)
+      if (node->regs[j] != NULL)
+        printf("Register %zu: %s\n", j, registers[*(node->regs[j])]);
+  }
+  printf("\n");
+}

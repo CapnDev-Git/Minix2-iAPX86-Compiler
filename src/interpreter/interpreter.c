@@ -7,6 +7,7 @@ void set_flag(char f, char v) {
 
 void update_flags(uint16_t result) { // might need to optimize the checks
   // Set the OF flag
+  // TODO when encountered
 
   // Set the SF flag
   set_flag(SF, (int16_t)result < 0);
@@ -178,8 +179,8 @@ int interpret(NodeAST *node) {
     // AND macro logic here
     break;
   case CALL:
-    // CALL macro logic here
-    break;
+    IP = *(node->imm); // not sure, was for testing originally
+    return EXIT_IPCHANGED;
   case CBW:
     // CBW macro logic here
     break;
@@ -230,7 +231,7 @@ int interpret(NodeAST *node) {
     switch (msg->t) {
     case 1: // EXIT
       printf("<%s(%zu)>\n", syscall, msg->data);
-      return EXIT_FAILURE;
+      return EXIT_SYSCALL;
 
     case 4: // WRITE
       char *str = malloc(msg->nbytes + 1);
@@ -266,8 +267,10 @@ int interpret(NodeAST *node) {
     // JLE macro logic here
     break;
   case JNB:
-    // if (!flags[CF])
-    // node = node->next;
+    if (!flags[CF]) {
+      IP = *(node->imm);
+      return EXIT_IPCHANGED;
+    }
     break;
   case JNE:
     // JNE macro logic here
@@ -363,7 +366,7 @@ int interpret(NodeAST *node) {
   case XOR:
     // XOR r16, r16
     regs[*(node->regs[0])] ^= regs[*(node->regs[1])];
-    update_flags(regs[*(node->regs[0])]);
+    update_flags(regs[*(node->regs[0])]); // TDOO: modify ?
     break;
   case UNDEFINED:
     // UNDEFINED macro logic here
@@ -372,5 +375,5 @@ int interpret(NodeAST *node) {
     errx(1, "Undefined instruction!");
   }
 
-  return EXIT_SUCCESS;
+  return EXIT_CONTINUE;
 }

@@ -32,38 +32,3 @@ void hexdump(const char *path) {
   memcpy(text_mem, buffer + HEADER_SIZE, TEXT_SIZE);
   memcpy(data_mem, buffer + DATA_BEG, DATA_SIZE);
 }
-
-char **get_cout(char *command, size_t *lc) {
-  char **lines = NULL; // Array to store lines of command output
-  char buffer[BUFFER_SIZE];
-
-  FILE *pipe = popen(command, "r"); // Open a pipe to the command
-  if (pipe == NULL)
-    errx(1, "Command can't be executed!");
-
-  // Read the command output line by line
-  while (fgets(buffer, BUFFER_SIZE, pipe) != NULL) {
-    // Remove newline character from the end of the line
-    buffer[strcspn(buffer, "\n")] = '\0';
-
-    // Allocate memory for the new line
-    char *line = malloc(strlen(buffer) + 1);
-    strcpy(line, buffer);
-
-    // Increase the size of the lines array
-    lines = realloc(lines, (*lc + 1) * sizeof(char *));
-    lines[*lc] = line;
-    (*lc)++;
-  }
-
-  // Close the pipe
-  pclose(pipe);
-
-  // Add a null terminator to the last line
-  if (*lc > 0) {
-    lines = realloc(lines, (*lc + 1) * sizeof(char *));
-    lines[*lc] = NULL;
-  }
-
-  return lines;
-}
