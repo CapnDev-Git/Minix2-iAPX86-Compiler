@@ -37,7 +37,6 @@ void printKO(const char *filename);
 /// @param ref The reference
 void printDiff(const char *errorLine, const char *ref);
 
-void print4b(const unsigned char *p, size_t a, size_t il, size_t *ip,
-             char *line);
+void print4b(const unsigned char *p, size_t a, size_t il, char *line);
 
 void print_node(NodeAST *node);

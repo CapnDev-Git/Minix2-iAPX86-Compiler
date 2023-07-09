@@ -1,7 +1,5 @@
 #include "disassembler.h"
 
-/// @brief Get addressing mode
-/// @param a address after mod reg r/m byte
 void get_adm(size_t a, unsigned char mod, unsigned char rm, char *ea,
              size_t *ds) {
   size_t disp = 0;
@@ -16,8 +14,8 @@ void get_adm(size_t a, unsigned char mod, unsigned char rm, char *ea,
   }
 
   // Get the destination
-  char *DESTS[REG_SIZE] = {"bx+si", "bx+di", "bp+si", "bp+di",
-                           "si",    "di",    "bp",    "bx"};
+  char *DESTS[DESTS_SIZE] = {"bx+si", "bx+di", "bp+si", "bp+di",
+                             "si",    "di",    "bp",    "bx"};
   char *dest = DESTS[rm];
 
   // Format the effective address according to the addressing mode &
@@ -50,34 +48,21 @@ void disassemble() {
   // Initialize the segment registers (for segment override prefix)
   char line[256];
   unsigned char op;
-  size_t a = 0, ip = 0, pip = ip;
+  size_t a = 0;
 
   // Array of function pointers to the opcodes
-  void (*opcodes[OPCODES_SIZE])(size_t, unsigned char, size_t *) = {
+  void (*opcodes[OPCODES_SIZE])(size_t, unsigned char) = {
       f0x0, f0x1, f0x2, f0x3, f0x4, f0x5, f0x6, f0x7,
       f0x8, f0x9, f0xa, f0xb, f0xc, f0xd, f0xe, f0xf};
 
   // Keep looping until the end of the program
   while (a < TEXT_SIZE) {
+    // Get the opcode
     op = text_mem[a] >> 4;
-
-    // Check if there's an undefined opcode (end of program)
-    if (!op) {
-      if (a + 1 >= TEXT_SIZE) {
-        print4b(text_mem, a, 1, &ip, line);
-        sprintf(line + strlen(line), "(undefined)");
-
-        // Add the line to the lsit of ASM ligns
-        strncpy(ASM[a], line, sizeof(ASM[a]));
-        ASM_MAX_INDEX = a;
-
-        return;
-      }
-    }
 
     // Catch segment override prefix
     if ((op >> 1) == 0b000 && ((text_mem[a] >> 1) & 0b11) == 0b11) {
-      print4b(text_mem, a, 1, &ip, line);
+      print4b(text_mem, a, 1, line);
 
       if (text_mem[a] == 0x0f) {
         sprintf(line + strlen(line), "(undefined)");
@@ -93,26 +78,34 @@ void disassemble() {
       // Add the line to the lsit of ASM ligns
       strncpy(ASM[a], line, sizeof(ASM[a]));
       ASM_MAX_INDEX = a;
-      a++;
+      a = ++IP;
       continue;
     }
 
     // Execute the corresponding opcode function
-    opcodes[op](a, text_mem[a] & 0b1111, &ip);
+    opcodes[op](a, text_mem[a] & 0b1111);
 
-    // Prevent infinite loop and detect undefined opcodes (keep progressing
-    // reading the next bytes otherwise gets stuck)
-    if (pip == ip) {
-      print4b(text_mem, a, 1, &ip, line);
-      sprintf(line + strlen(line), "(undefined)");
+    // Interpret the disassembled instruction if the flag is set
+    if (INTERPRET) {
+      // Define the node
+      NodeAST node;
+      NodeAST_init(&node);
 
-      // Add the line to the lsit of ASM ligns
-      strncpy(ASM[a], line, sizeof(ASM[a]));
-      ASM_MAX_INDEX = a;
+      // Parse & interpret the node
+      get_node(&node, ASM[a]);
+      int ret = interpret(&node);
+
+      // Exit if the instruction was an exit syscall
+      if (ret == EXIT_SYSCALL) {
+        printf("Program exited");
+        return;
+      }
     }
 
-    // Update the address & previous instruction pointer (for undefined
-    // opcodes)
-    a = pip = ip;
+    // Update the address to go to IP (changed by opcode function / interpreter)
+    a = IP;
   }
+
+  // Reached the end of the program
+  printf("Program's end reached (to investiguate)\n");
 }

@@ -97,7 +97,7 @@ void get_node(NodeAST *node, char *line) {
 
       // Get the register index
       *(node->regs[*(node->nreg) - 1]) =
-          get_index(registers, REG_SIZE, tokens[j]);
+          get_index(registers, ALL_REG_SIZE, tokens[j]);
     }
   }
 

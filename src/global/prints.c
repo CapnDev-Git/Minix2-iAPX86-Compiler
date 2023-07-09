@@ -96,8 +96,7 @@ void printDiff(const char *errorLine, const char *ref) {
   printf("\033[0m\n");
 }
 
-void print4b(const unsigned char *p, size_t a, size_t il, size_t *ip,
-             char *line) {
+void print4b(const unsigned char *p, size_t a, size_t il, char *line) {
   // Print the address
   sprintf(line, DIS_ADDRESS_FORMAT, a);
   for (size_t j = 0; j < il; j++) {
@@ -110,7 +109,7 @@ void print4b(const unsigned char *p, size_t a, size_t il, size_t *ip,
     sprintf(line + strlen(line), SPACE);
 
   // Increment the instruction pointer by the instruction length
-  *ip += il;
+  IP += il;
 }
 
 void print_node(NodeAST *node) {

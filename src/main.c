@@ -28,30 +28,32 @@ int main(int argc, char **argv) {
     if (argc == 2)
       errx(1, "File to interpret not provided.\nUsage: %s -m <file>", argv[0]);
 
-    // Disassemble the binary
-    disassemble();
+    // Set the flag to interpret
+    INTERPRET = 1;
 
     // Setup the memory for the interpreter
     setup_memory(argc, argv);
-    // print_hexdump(data_mem, MEMORY_SIZE); // DEBUG
 
     // Interpret the binary
     print_regs_header();
 
-    while (1) {
-      NodeAST node;
-      NodeAST_init(&node);
-      get_node(&node, ASM[IP]);
-      int ret = interpret(&node);
+    // Disassemble & interpret the binary
+    disassemble();
 
-      // Exit if the instruction was an exit syscall
-      if (ret == EXIT_SYSCALL)
-        break;
+    // while (1) {
+    //   NodeAST node;
+    //   NodeAST_init(&node);
+    //   get_node(&node, ASM[IP]);
+    //   int ret = interpret(&node);
 
-      // Only increment the IP if the instruction was not a jump
-      if (ret != EXIT_IPCHANGED)
-        IP += node.opLen;
-    }
+    //   // Exit if the instruction was an exit syscall
+    //   if (ret == EXIT_SYSCALL)
+    //     break;
+
+    //   // Only increment the IP if the instruction was not a jump
+    //   if (ret != EXIT_IPCHANGED)
+    //     IP += node.opLen;
+    // }
 
     // DONT FORGET TO ACTUALLY EXECUTE IT AT THE END
     // TODO, do like ASM global array to print to stderr when done

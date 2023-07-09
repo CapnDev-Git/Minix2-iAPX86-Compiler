@@ -15,6 +15,7 @@ const char *REG16[R16_SIZE] = {"ax", "cx", "dx", "bx", "sp", "bp", "si", "di"};
 const char *SEGREG[SR_SIZE] = {"es", "cs", "ss", "ds"};
 
 // INTERPRETER
+int INTERPRET = 0;
 char INTPTR[MEMORY_SIZE][256] = {0};
 size_t INTPTR_MAX_INDEX = 0;
 
@@ -26,8 +27,9 @@ const char *instructions[INSTR_SIZE] = {
     "pop", "push", "rcl", "rep",  "ret",  "sar", "sbb",        "shl",
     "shr", "std",  "sub", "test", "xchg", "xor", "(undefined)"};
 
-const char *registers[REG_SIZE] = {"ax", "bx", "cx", "dx",
-                                   "sp", "bp", "si", "di"};
+const char *registers[ALL_REG_SIZE] = {"ax", "bx", "cx", "dx", "sp", "bp",
+                                       "si", "di", "al", "bl", "cl", "dl",
+                                       "ah", "bh", "ch", "dh"};
 
 const SyscallType syscallTypes[SYSCALLS_SIZE] = {
     {1, "exit"}, {4, "write"}, {17, "brk"}, {54, "ioctl"}};
@@ -110,4 +112,9 @@ void NodeAST_init(NodeAST *node) {
   if (node->regs == NULL)
     errx(1, "Can't allocate memory for the registers array!");
   *(node->regs) = NULL;
+}
+
+void push16_stack(uint16_t val) {
+  data_mem[--(*sp)] = val >> 8;
+  data_mem[--(*sp)] = val;
 }

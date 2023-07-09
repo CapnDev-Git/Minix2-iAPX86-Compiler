@@ -56,22 +56,18 @@ void process_args(Vector *args, Vector *envp) {
   data_mem[--(*sp)] = '\0';
 
   // Push the address of the environment variables onto the stack
-  data_mem[--(*sp)] = env_head >> 8;
-  data_mem[--(*sp)] = env_head;
+  push16_stack(env_head);
 
   // Push delimiters between the character and argument pointers
   data_mem[--(*sp)] = '\0';
   data_mem[--(*sp)] = '\0';
 
   // Push the addresses of the arguments onto the stack
-  for (size_t i = 0; i < args->size; ++i) {
-    data_mem[--(*sp)] = (uint16_t)((uintptr_t)addr.data[i] >> 8);
-    data_mem[--(*sp)] = (uint16_t)((uintptr_t)addr.data[i]);
-  }
+  for (size_t i = 0; i < args->size; ++i)
+    push16_stack((uint16_t)((uintptr_t)addr.data[i]));
 
   // Push the number of arguments onto the stack
-  data_mem[--(*sp)] = args->size >> 8;
-  data_mem[--(*sp)] = args->size;
+  push16_stack(args->size);
 }
 
 void setup_memory(int argc, char **argv) {

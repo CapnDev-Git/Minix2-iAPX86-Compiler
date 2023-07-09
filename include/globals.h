@@ -67,6 +67,7 @@ typedef struct {
 #define R16_SIZE 8
 #define SR_SIZE 4
 #define OPCODES_SIZE 16
+#define DESTS_SIZE 8
 
 // Interpreter sizes
 #define INSTR_SIZE 47
@@ -74,12 +75,16 @@ typedef struct {
 #define SYSCALLS_SIZE 4 // so far, might change
 #define DATA_LINE_SIZE 16
 #define REG_SIZE 8
+#define ALL_REG_SIZE 16
 
+// Interpreter exit codes
 #define EXIT_CONTINUE 0
 #define EXIT_SYSCALL -1
 #define EXIT_IPCHANGED -2
 
 // Global variables
+extern int INTERPRET;
+
 extern size_t TEXT_SIZE;
 extern size_t DATA_SIZE;
 extern size_t TEXT_BEG;
@@ -98,7 +103,7 @@ extern const char *REG16[R16_SIZE];
 extern const char *SEGREG[SR_SIZE];
 
 extern const char *instructions[INSTR_SIZE];
-extern const char *registers[REG_SIZE];
+extern const char *registers[ALL_REG_SIZE];
 
 extern const SyscallType syscallTypes[SYSCALLS_SIZE];
 extern const SyscallReturn syscallReturns[SYSCALLS_SIZE];
@@ -114,6 +119,7 @@ extern uint16_t IP;
 #define OP_MULT '*'
 #define OP_DIV '/'
 #define OP_CMP 'c'
+#define OP_AND '&'
 
 // Instructions
 #define ADC 0
@@ -227,3 +233,6 @@ void vector_free(Vector *vector);
 
 // NodeAST functions
 void NodeAST_init(NodeAST *node);
+
+// Stack functions
+void push16_stack(uint16_t val);

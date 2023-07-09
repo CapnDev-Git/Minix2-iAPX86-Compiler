@@ -26,6 +26,13 @@ void process_operation(uint16_t *op1, uint16_t *op2, char op) {
     set_flag(CF, *op1 - *op2 < 0);
     break;
 
+  case OP_AND:
+    uint16_t and = *op1 & *op2;
+    set_flag(SF, (int16_t) and < 0);
+    set_flag(ZF, and == 0);
+    set_flag(CF, and > 0xffff);
+    break;
+
   case OP_PLUS:
     *op1 += *op2;
     set_flag(SF, (int16_t)*op1 < 0);
@@ -75,20 +82,23 @@ size_t get_syscall_return(uint16_t type) {
 }
 
 uint16_t process_memory_operand(NodeAST *node) {
+  // Copy the memory operand to a new string
+  char *copiedOp = strdup(node->mOp);
+
   // Remove the brackets from the memory operand
-  (++node->mOp)[strlen(node->mOp) - 1] = '\0';
+  (++copiedOp)[strlen(copiedOp) - 1] = '\0';
 
   // Check if the memory operand contains a "+" or "-" sign
-  char *opstr = strchr(node->mOp, '+');
+  char *opstr = strchr(copiedOp, '+');
   if (!opstr)
-    opstr = strchr(node->mOp, '-');
+    opstr = strchr(copiedOp, '-');
 
   // If it does, sum or subtract the number from the register value
   if (opstr) {
     // Split the operand
     char opsym = *opstr;
     *opstr = '\0';
-    const char *rname = node->mOp;
+    const char *rname = copiedOp;
     const char *nstr = opstr + 1;
     int n = atoi(nstr);
 
@@ -104,15 +114,15 @@ uint16_t process_memory_operand(NodeAST *node) {
   }
 
   // If the operand doesn't contain a "+" or "-" sign, check if it's a register
-  int registerIndex = get_index(registers, REG_SIZE, node->mOp);
+  int registerIndex = get_index(registers, REG_SIZE, copiedOp);
   if (registerIndex != -1)
     return (uint16_t)regs[registerIndex];
 
   // Otherwise, directly return the value of the memory address
-  return (uint16_t)strtol(node->mOp, NULL, 16);
+  return (uint16_t)strtol(copiedOp, NULL, 16);
 }
 
-char *get_memory_content(NodeAST *node, unsigned char *data, size_t adr) {
+char *get_memory_content(unsigned char *data, size_t adr) {
   // Allocate memory for the memory content display
   char *content = malloc(32 * sizeof(char));
   if (content == NULL)
@@ -135,7 +145,6 @@ char *get_memory_content(NodeAST *node, unsigned char *data, size_t adr) {
   free(content);
 
   // Set the final formatted string back to node->mOp
-  node->mOp = copiedContent;
   return copiedContent;
 }
 
@@ -156,7 +165,7 @@ int interpret(NodeAST *node) {
   char *memory_content = NULL;
   if (node->mOp != NULL) {
     mOp = process_memory_operand(node);
-    memory_content = strdup(get_memory_content(node, data_mem, mOp));
+    memory_content = strdup(get_memory_content(data_mem, mOp));
   }
 
   // Print the registers status
@@ -179,6 +188,7 @@ int interpret(NodeAST *node) {
     // AND macro logic here
     break;
   case CALL:
+    push16_stack(node->adr);
     IP = *(node->imm); // not sure, was for testing originally
     return EXIT_IPCHANGED;
   case CBW:
@@ -273,7 +283,10 @@ int interpret(NodeAST *node) {
     }
     break;
   case JNE:
-    // JNE macro logic here
+    if (!flags[ZF]) {
+      IP = *(node->imm);
+      return EXIT_IPCHANGED;
+    }
     break;
   case JNL:
     // JNL macro logic here
@@ -285,7 +298,8 @@ int interpret(NodeAST *node) {
     // JNBE macro logic here
     break;
   case JMP:
-    // JMP macro logic here
+    IP = *(node->imm);
+    return EXIT_IPCHANGED;
     break;
   case JL:
     // JL macro logic here
@@ -305,9 +319,15 @@ int interpret(NodeAST *node) {
     }
 
     if (*(node->nreg) == 1 && node->mOp != NULL) {
-      // MOV r16, mOp
-      memcpy(regs + *(node->regs[0]), data_mem + mOp, 2);
-      break;
+      if (!strcmp(node->op1, node->mOp)) {
+        // MOV mOp, r16
+        memcpy(data_mem + mOp, regs + *(node->regs[0]), 2);
+        break;
+      } else {
+        // MOV r16, mOp
+        memcpy(regs + *(node->regs[0]), data_mem + mOp, 2);
+        break;
+      }
     }
 
     // MOV r16, imm16
@@ -326,7 +346,12 @@ int interpret(NodeAST *node) {
     // POP macro logic here
     break;
   case PUSH:
-    // PUSH macro logic here
+    // Push the value of the operand onto the stack
+    if (*(node->nreg) == 1) {
+      // PUSH r16
+      push16_stack(regs[*(node->regs[0])]);
+      break;
+    }
     break;
   case RCL:
     // RCL macro logic here
@@ -353,12 +378,28 @@ int interpret(NodeAST *node) {
     // STD macro logic here
     break;
   case SUB:
-    // SUB mOp, imm16
-    uint16_t *op1_ptr = (uint16_t *)(data_mem + mOp);
-    process_operation(op1_ptr, node->imm, OP_MINUS);
+    if (*(node->nreg) == 1) {
+      // SUB r16, imm16
+      process_operation(regs + *(node->regs[0]), node->imm, OP_MINUS);
+    } else {
+      // SUB mOp, imm16
+      uint16_t *op1_ptr = (uint16_t *)(data_mem + mOp);
+      process_operation(op1_ptr, node->imm, OP_MINUS);
+    }
     break;
   case TEST:
-    // TEST macro logic here
+    // Process AND operation between op1 and op2 and update the flags
+    if (*(node->nreg) == 1 && node->imm != NULL) {
+      // TEST r8, imm16
+      if (*(node->regs[0]) > 7 && *(node->regs[0]) < 12) {
+        // Operate on the lower 8 bits of the register
+        uint16_t *op1_ptr = (uint16_t *)(regs + *(node->regs[0]) - 8);
+        uint8_t op1 = (uint8_t)(*op1_ptr);
+        process_operation((uint16_t *)&op1, node->imm, OP_AND);
+        break;
+      }
+    }
+
     break;
   case XCHG:
     // XCHG macro logic here

@@ -9,6 +9,9 @@
 #include <unistd.h>
 
 #include "globals.h"
+#include "interpreter.h"
+#include "lexer.h"
+#include "parser.h"
 #include "patterns.h"
 #include "prints.h"
 
