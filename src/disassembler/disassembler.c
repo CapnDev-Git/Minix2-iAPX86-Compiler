@@ -60,6 +60,20 @@ void disassemble() {
     // Get the opcode
     op = text_mem[a] >> 4;
 
+    // Check if there's an undefined opcode (end of program)
+    if (!op) {
+      if (a + 1 >= TEXT_SIZE) {
+        print4b(text_mem, a, 1, line);
+        sprintf(line + strlen(line), "(undefined)");
+
+        // Add the line to the lsit of ASM ligns
+        strncpy(ASM[a], line, sizeof(ASM[a]));
+        ASM_MAX_INDEX = a;
+        a = ++IP;
+        return;
+      }
+    }
+
     // Catch segment override prefix
     if ((op >> 1) == 0b000 && ((text_mem[a] >> 1) & 0b11) == 0b11) {
       print4b(text_mem, a, 1, line);
@@ -105,7 +119,4 @@ void disassemble() {
     // Update the address to go to IP (changed by opcode function / interpreter)
     a = IP;
   }
-
-  // Reached the end of the program
-  printf("Program's end reached (to investiguate)\n");
 }

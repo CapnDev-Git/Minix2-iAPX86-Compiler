@@ -1033,7 +1033,6 @@ void f0xf(size_t a, unsigned char LSB4) {
 
       case 0b100:
         // JMP: indw|seg
-        printf("here\n");
         print_frm(a, "jmp", ea, &ds);
         break;
 

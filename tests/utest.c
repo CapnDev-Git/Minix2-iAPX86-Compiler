@@ -32,9 +32,10 @@ char *get_cout(const char *command) {
   return buffer;
 }
 
-void cmp_files(const char *filename, int verbose) {
+void cmp_files(const char *filename, int verbose, int interpret) {
   char mmvmCommand[MAX_LENGTH];
-  snprintf(mmvmCommand, sizeof(mmvmCommand), "mmvm -m %s 2>&1", filename);
+  snprintf(mmvmCommand, sizeof(mmvmCommand), "mmvm -%s %s %s",
+           interpret ? "m" : "d", filename, interpret ? "" : "2>&1");
 
   char *ref = get_cout(mmvmCommand);
   if (ref == NULL)
@@ -43,7 +44,8 @@ void cmp_files(const char *filename, int verbose) {
   // Construct the command to capture the output of the disassembler
   char disassemblerCommand[MAX_LENGTH];
   snprintf(disassemblerCommand, sizeof(disassemblerCommand),
-           "./z123029_mmvm -m %s", filename);
+           "./z123029_mmvm -%s %s %s", interpret ? "m" : "d", filename,
+           interpret ? "" : "2>&1");
 
   // Capture the output of the disassembler
   char *disassemblerOutput = get_cout(disassemblerCommand);
@@ -71,7 +73,7 @@ void cmp_files(const char *filename, int verbose) {
   }
 }
 
-void cmp_files_dir(const char *directory, int verbose) {
+void cmp_files_dir(const char *directory, int verbose, int interpret) {
   DIR *dir = opendir(directory);
   if (dir == NULL) {
     printf("Failed to open directory: %s\n", directory);
@@ -83,7 +85,7 @@ void cmp_files_dir(const char *directory, int verbose) {
     if (entry->d_type == DT_REG) { // Check if it's a regular file
       char filepath[MAX_LENGTH];
       snprintf(filepath, sizeof(filepath), "%s%s", directory, entry->d_name);
-      cmp_files(filepath, verbose);
+      cmp_files(filepath, verbose, interpret);
     }
   }
 
@@ -91,27 +93,26 @@ void cmp_files_dir(const char *directory, int verbose) {
 }
 
 int main(int argc, char **argv) {
-  if (argc < 2 || argc > 3)
+  if (argc < 2 || argc > 4)
     errx(1, "Usage: %s [-v|--verbose] <file|directory>\n", argv[0]);
 
   if (argv[1][0] == '-' && strcmp(argv[1], "--verbose") &&
-      strcmp(argv[1], "-v"))
+      strcmp(argv[1], "-v") && strcmp(argv[1], "-d") && strcmp(argv[1], "-m"))
     errx(1, "Invalid flag: %s\n", argv[1]);
 
-  if (argc == 2 && argv[1][0] == '-')
-    errx(1, "Provided flag without argument: %s\n", argv[1]);
-
-  if (argc == 3 && strcmp(argv[1], "--verbose") && strcmp(argv[1], "-v"))
+  if (argc == 3 && strcmp(argv[1], "--verbose") && strcmp(argv[1], "-v") &&
+      strcmp(argv[1], "-d") && strcmp(argv[1], "-m"))
     errx(1, "Invalid flag: %s\n", argv[1]);
 
   // Check if the input is a directory
+  int interpret = strcmp(argv[2], "-d");
   DIR *dir = opendir(argv[argc - 1]);
   if (dir != NULL) {
     closedir(dir);
-    cmp_files_dir(argv[argc - 1], argc == 3);
+    cmp_files_dir(argv[argc - 1], argc == 3, interpret);
   } else {
     // Assume the input is a single file
-    cmp_files(argv[argc - 1], argc == 3);
+    cmp_files(argv[argc - 1], argc == 3, interpret);
   }
 
   return 0;
