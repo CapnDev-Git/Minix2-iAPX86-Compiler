@@ -40,21 +40,6 @@ int main(int argc, char **argv) {
     // Disassemble & interpret the binary
     disassemble();
 
-    // while (1) {
-    //   NodeAST node;
-    //   NodeAST_init(&node);
-    //   get_node(&node, ASM[IP]);
-    //   int ret = interpret(&node);
-
-    //   // Exit if the instruction was an exit syscall
-    //   if (ret == EXIT_SYSCALL)
-    //     break;
-
-    //   // Only increment the IP if the instruction was not a jump
-    //   if (ret != EXIT_IPCHANGED)
-    //     IP += node.opLen;
-    // }
-
     // DONT FORGET TO ACTUALLY EXECUTE IT AT THE END
     // TODO, do like ASM global array to print to stderr when done
   } else {
