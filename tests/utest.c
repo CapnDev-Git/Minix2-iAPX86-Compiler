@@ -34,8 +34,8 @@ char *get_cout(const char *command) {
 
 void cmp_files(const char *filename, int verbose, int interpret) {
   char mmvmCommand[MAX_LENGTH];
-  snprintf(mmvmCommand, sizeof(mmvmCommand), "mmvm -%s %s %s",
-           interpret ? "m" : "d", filename, interpret ? "2>&1" : "2>&1");
+  snprintf(mmvmCommand, sizeof(mmvmCommand), "mmvm -%s %s 2>&1",
+           interpret ? "m" : "d", filename);
 
   char *ref = get_cout(mmvmCommand);
   if (ref == NULL)
