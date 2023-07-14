@@ -105,14 +105,15 @@ int main(int argc, char **argv) {
     errx(1, "Invalid flag: %s\n", argv[1]);
 
   // Check if the input is a directory
+  int verbose = strcmp(argv[1], "-v");
   int interpret = strcmp(argv[2], "-d");
   DIR *dir = opendir(argv[argc - 1]);
   if (dir != NULL) {
     closedir(dir);
-    cmp_files_dir(argv[argc - 1], argc == 3, interpret);
+    cmp_files_dir(argv[argc - 1], !verbose, interpret);
   } else {
     // Assume the input is a single file
-    cmp_files(argv[argc - 1], argc == 3, interpret);
+    cmp_files(argv[argc - 1], !verbose, interpret);
   }
 
   return 0;

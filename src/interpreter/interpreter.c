@@ -1,73 +1,87 @@
 #include "interpreter.h"
 
-void set_flag(char f, char v) {
-  static const char flagChars[] = {'O', 'S', 'Z', 'C'};
-  flags[f] = v ? flagChars[f] : '-';
-}
-
-void update_flags(uint16_t result) { // might need to optimize the checks
-  // Set the OF flag
-  // TODO when encountered
-
-  // Set the SF flag
-  set_flag(SF, (int16_t)result < 0);
-
-  // Set the ZF flag
-  set_flag(ZF, result == 0);
-
-  // Set the CF flag
-  set_flag(CF, result > 0xffff);
-}
+void set_flag(char f, char test) { flags[f] = test ? 1 : 0; }
 
 void process_operation(uint16_t *op1, uint16_t *op2, char op) {
+  uint16_t diff = 0, sum = 0;
   switch (op) {
-  case OP_CMP:
+  case OP_TEST:
+    uint16_t and = *op1 & *op2;
+    set_flag(OF, 0);
+    set_flag(CF, 0);
+    set_flag(SF, (int16_t) and < 0);
+    set_flag(ZF, and == 0);
+    break;
+
+  case OP_NEG:
+    *op1 = ~*op1 + 1;
+    set_flag(SF, (int16_t)*op1 < 0);
     set_flag(ZF, *op1 == 0);
-    set_flag(CF, *op1 - *op2 < 0);
+    set_flag(CF, *op1 != 0);
+    break;
+
+  case OP_SAR:
+  case OP_SHL:
+    if (op == OP_SAR)
+      *op1 >>= *op2;
+    else if (op == OP_SHL)
+      *op1 <<= *op2;
+
+    set_flag(SF, (int16_t)*op1 < 0);
+    set_flag(ZF, *op1 == 0);
+    set_flag(CF, (*op1 & 0x8000) != 0);
+    break;
+
+  case OP_INC:
+  case OP_DEC:
+    if (op == OP_DEC)
+      *op1 -= 1;
+    else if (op == OP_INC)
+      *op1 += 1;
+
+    set_flag(SF, (int16_t)*op1 < 0);
+    set_flag(ZF, *op1 == 0);
     break;
 
   case OP_AND:
-    uint16_t and = *op1 & *op2;
-    set_flag(SF, (int16_t) and < 0);
-    set_flag(ZF, and == 0);
-    set_flag(CF, and > 0xffff);
+  case OP_OR:
+  case OP_XOR:
+    if (op == OP_AND)
+      *op1 &= *op2;
+    else if (op == OP_OR)
+      *op1 |= *op2;
+    else if (op == OP_XOR)
+      *op1 ^= *op2;
+
+    set_flag(OF, 0);
+    set_flag(CF, 0);
+    set_flag(SF, (int16_t)*op1 < 0);
+    set_flag(ZF, *op1 == 0);
     break;
 
   case OP_PLUS:
+    sum = *op1 + *op2;
+    set_flag(SF, (int16_t)sum < 0);
+    set_flag(ZF, sum == 0);
+    set_flag(CF, sum < *op1 || sum < *op2);
     *op1 += *op2;
-    set_flag(SF, (int16_t)*op1 < 0);
-    set_flag(ZF, *op1 == 0);
-    set_flag(CF, (uint32_t)(*op1) > 0xffff); // should be that, never seen
     break;
 
+  case OP_CMP:
   case OP_MINUS:
-    *op1 -= *op2;
-    // set_flag(SF, (int16_t)*op1 < 0);
-    // set_flag(ZF, *op1 == 0);
-    // set_flag(CF, *op1 - *op2 < 0);
-    break;
+    diff = *op1 - *op2;
+    set_flag(SF, diff >= 0x8000);
+    set_flag(ZF, diff == 0);
+    set_flag(CF, ((*op1 >= 0x8000 && *op2 < 0x8000 && diff < 0x8000) ||
+                  (*op1 < 0x8000 && *op2 >= 0x8000 && diff >= 0x8000) ||
+                  (*op1 < 0x8000 && *op2 < 0x8000 && diff >= 0x8000) ||
+                  (*op1 < *op2 && diff < 0x8000)) &&
+                     *op2 != 0);
 
-  case OP_MULT:
-    printf("MULT\n");
-    // *op1 *= *op2;
-    break;
-
-  case OP_DIV:
-    printf("DIV\n");
-    // *op1 /= *op2;
+    if (op == OP_MINUS)
+      *op1 -= *op2;
     break;
   }
-}
-
-const char *get_syscall_type(uint16_t type) {
-  for (size_t i = 0; i < SYSCALLS_SIZE; ++i) {
-    if (type == syscallTypes[i].type) {
-      return syscallTypes[i].name;
-    }
-  }
-
-  // Unknown syscall type
-  errx(1, "Unknown syscall type: %d", type);
 }
 
 size_t get_syscall_return(uint16_t type) {
@@ -100,7 +114,7 @@ uint16_t process_memory_operand(NodeAST *node) {
     *opstr = '\0';
     const char *rname = copiedOp;
     const char *nstr = opstr + 1;
-    int n = atoi(nstr);
+    int n = strtol(nstr, NULL, 16);
 
     // Check if the register name is valid
     int registerIndex = get_index(registers, REG_SIZE, rname);
@@ -122,7 +136,7 @@ uint16_t process_memory_operand(NodeAST *node) {
   return (uint16_t)strtol(copiedOp, NULL, 16);
 }
 
-char *get_memory_content(unsigned char *data, size_t adr) {
+char *get_memory_content(unsigned char *data, size_t addr, int r8) {
   // Allocate memory for the memory content display
   char *content = malloc(32 * sizeof(char));
   if (content == NULL)
@@ -130,11 +144,12 @@ char *get_memory_content(unsigned char *data, size_t adr) {
 
   // Format the memory content string
   strcpy(content, " ;[");
-  sprintf(content + strlen(content), "%04lx]", adr);
+  sprintf(content + strlen(content), "%04lx]", addr);
 
   // Add the memory content to the string (for now only 2 bytes)
-  sprintf(content + strlen(content), "%02x", data[adr + 1]);
-  sprintf(content + strlen(content), "%02x", data[adr]);
+  if (!r8)
+    sprintf(content + strlen(content), "%02x", data[addr + 1]);
+  sprintf(content + strlen(content), "%02x", data[addr]);
 
   // Create a copy of the string using strdup
   char *copiedContent = strdup(content);
@@ -148,133 +163,291 @@ char *get_memory_content(unsigned char *data, size_t adr) {
   return copiedContent;
 }
 
-void get_msg(Message *msg_struct, uint16_t *msg) {
-  // Check if the message is a syscall
-  if (msg[0] != 0x01)
-    errx(1, "Message is not a syscall"); // dk otherwise
-
-  // Fill the message structure
-  msg_struct->t = msg[1];
-  msg_struct->nbytes = msg[3];
-  msg_struct->data = msg[5];
-}
-
 int interpret(NodeAST *node) {
   // Get the memory content of the eventual memory operand
   uint16_t mOp = 0;
   char *memory_content = NULL;
   if (node->mOp != NULL) {
     mOp = process_memory_operand(node);
-    memory_content = strdup(get_memory_content(data_mem, mOp));
+
+    int r8_given = *(node->nreg) == 1 && *(node->regs[0]) > 7;
+    int r8_spec = node->spe != NULL && !strcmp(node->spe, "byte");
+    memory_content =
+        strdup(get_memory_content(data_mem, mOp, r8_given || r8_spec));
   }
 
   // Print the registers status
   print_regs_status(regs, flags, node->ASM, memory_content);
 
+  // // DEBUG FOR R8 REGISTERS
+  // if ((*node->nreg) > 0 && *(node->regs[0]) > 7)
+  //   printf("CHECK HALF OPERATOR ^\n");
+
   // Interpret the instruction
   switch (get_index(instructions, INSTR_SIZE, node->opC)) {
   case ADC:
-    // ADC macro logic here
+    printf("UNPATCHED ADC\n");
     break;
   case ADD:
     // ADD r16, r16
     if (*(node->nreg) == 2) {
       process_operation(&regs[*(node->regs[0])], &regs[*(node->regs[1])],
                         OP_PLUS);
-      break;
+      return EXIT_CONTINUE;
     }
+
+    // ADD r16, imm16
+    if (*(node->nreg) == 1 && node->imm != NULL) {
+      process_operation(&regs[*(node->regs[0])], node->imm, OP_PLUS);
+      return EXIT_CONTINUE;
+    }
+
+    // ADD r16, mOp
+    if (*(node->nreg) == 1 && node->mOp != NULL) {
+      if (!strcmp(node->op1, node->mOp)) {
+        process_operation((uint16_t *)(data_mem + mOp), &regs[*(node->regs[0])],
+                          OP_PLUS);
+        return EXIT_CONTINUE;
+      } else {
+        process_operation(&regs[*(node->regs[0])], (uint16_t *)(data_mem + mOp),
+                          OP_PLUS);
+        return EXIT_CONTINUE;
+      }
+    }
+
+    // ADD mOp, imm16
+    if (node->mOp != NULL && node->imm != NULL) {
+      process_operation((uint16_t *)(data_mem + mOp), node->imm, OP_PLUS);
+      return EXIT_CONTINUE;
+    }
+
+    printf("UNPATCHED ADD\n");
     break;
   case AND:
-    // AND macro logic here
+    // AND mOp, imm16
+    if (node->mOp != NULL && node->imm != NULL) {
+      process_operation((uint16_t *)(data_mem + mOp), node->imm, OP_AND);
+      return EXIT_CONTINUE;
+    }
+
+    // AND r16, imm16
+    if (*(node->nreg) == 1 && node->imm != NULL) {
+      process_operation(&regs[*(node->regs[0])], node->imm, OP_AND);
+      return EXIT_CONTINUE;
+    }
+
+    // AND r16, mOp
+    if (*(node->nreg) == 1 && node->mOp != NULL) {
+      process_operation(&regs[*(node->regs[0])], (uint16_t *)(data_mem + mOp),
+                        OP_AND);
+      return EXIT_CONTINUE;
+    }
+
+    printf("UNPATCHED AND\n");
     break;
   case CALL:
-    push16_stack(node->adr);
-    IP = *(node->imm); // not sure, was for testing originally
-    return EXIT_IPCHANGED;
+    push16_stack(node->addr + node->opLen);
+
+    // CALL imm16
+    if (node->imm != NULL) {
+      IP = *(node->imm);
+      return EXIT_IPCHANGED;
+    }
+
+    // CALL r16
+    if (*(node->nreg) == 1) {
+      IP = regs[*(node->regs[0])];
+      return EXIT_IPCHANGED;
+    }
+
+    printf("UNPATCHED CALL\n");
   case CBW:
-    // CBW macro logic here
-    break;
+    // CBW
+    regs[AX] = (int16_t)(int8_t)(regs[AX] & 0xFF);
+    return EXIT_CONTINUE;
   case CLD:
-    // CLD macro logic here
+    printf("UNPATCHED CLD\n");
     break;
   case CMP:
-    // Compute the difference between op1 and op2 and update the flags
-    // accordingly
+    // CMP r16, imm16
     if (*(node->nreg) == 1 && node->imm != NULL) {
       process_operation(&regs[*(node->regs[0])], node->imm, OP_CMP);
-      break;
+      return EXIT_CONTINUE;
+    }
+
+    if (node->mOp != NULL && node->imm != NULL) {
+      if (node->spe != NULL && !strcmp(node->spe, "byte")) {
+        // CMP BYTE mOp, imm16
+        uint16_t *test = (uint16_t *)(data_mem + mOp);
+        uint8_t lsb = (uint8_t)(*test & 0xFF);
+        process_operation((uint16_t *)&lsb, node->imm, OP_CMP);
+        return EXIT_CONTINUE;
+      } else {
+        // CMP mOp, imm16
+        process_operation((uint16_t *)(data_mem + mOp), node->imm, OP_CMP);
+        return EXIT_CONTINUE;
+      }
+    }
+
+    if (node->mOp != NULL && *(node->nreg) == 1) {
+      if (!strcmp(node->op1, node->mOp)) {
+        // CMP mOp, r16
+        process_operation((uint16_t *)(data_mem + mOp), &regs[*(node->regs[0])],
+                          OP_CMP);
+        return EXIT_CONTINUE;
+      } else {
+        // CMP r16, mOp
+        process_operation(&regs[*(node->regs[0])], (uint16_t *)(data_mem + mOp),
+                          OP_CMP);
+        return EXIT_CONTINUE;
+      }
+      return EXIT_CONTINUE;
+    }
+
+    // CMP r16, r16
+    if (*(node->nreg) == 2) {
+      process_operation(&regs[*(node->regs[0])], &regs[*(node->regs[1])],
+                        OP_CMP);
+      return EXIT_CONTINUE;
+    }
+
+    printf("UNPATCHED CMP\n");
+    break;
+  case CWD:
+    // CWD
+    regs[DX] = (int16_t)(regs[AX] < 0 ? 0xFFFF : 0x0000);
+    return EXIT_CONTINUE;
+  case DEC:
+    // DEC r16
+    if (*(node->nreg) == 1) {
+      process_operation(&regs[*(node->regs[0])], NULL, OP_DEC);
+      return EXIT_CONTINUE;
+    }
+
+    // DEC mOp
+    if (node->mOp != NULL) {
+      process_operation((uint16_t *)(data_mem + mOp), NULL, OP_DEC);
+      return EXIT_CONTINUE;
+    }
+
+    printf("UNPATCHED DEC\n");
+    break;
+  case DIV:
+    // DIV r16
+    if (*(node->nreg) == 1) {
+      uint16_t dividend = regs[AX];
+      uint16_t divisor = regs[*node->regs[0]];
+
+      if (divisor == 0)
+        errx(1, "Division by zero");
+
+      regs[AX] = dividend / divisor;
+      regs[DX] = dividend % divisor;
+      return EXIT_CONTINUE;
     }
 
     break;
-  case CWD:
-    // CWD macro logic here
-    break;
-  case DEC:
-    // DEC macro logic here
-    break;
-  case DIV:
-    // DIV macro logic here
-    break;
   case HLT:
-    // HLT macro logic here
+    printf("UNPATCHED HLT\n");
     break;
   case IN:
-    // IN macro logic here
+    printf("UNPATCHED IN\n");
     break;
   case INC:
-    // INC macro logic here
+    // INC mOp
+    if (node->mOp != NULL) {
+      process_operation((uint16_t *)(data_mem + mOp), NULL, OP_INC);
+      return EXIT_CONTINUE;
+    }
+
+    // INC r16
+    if (*(node->nreg) == 1) {
+      process_operation(&regs[*(node->regs[0])], NULL, OP_INC);
+      return EXIT_CONTINUE;
+    }
+
+    printf("UNPATCHED INC\n");
     break;
   case INT:
+    uint16_t ret = 0, addr = 0, req = 0;
+    size_t nbytes = 0, data = 0;
+
     // Get the message structure pointer from the BX register
     uint16_t currData[DATA_LINE_SIZE];
     memcpy(currData, data_mem + regs[BX], DATA_LINE_SIZE);
 
-    // Process the current message
-    Message *msg = malloc(sizeof(Message));
-    if (msg == NULL)
-      errx(1, "Could not allocate memory for message structure.");
-    get_msg(msg, currData);
-
-    // Print the syscall
-    const char *syscall = get_syscall_type(msg->t); // will have to be rechecked
-    size_t ret = get_syscall_return(msg->t);
-    switch (msg->t) {
+    // Process the syscall
+    switch (currData[1]) {
     case 1: // EXIT
-      printf("<%s(%zu)>\n", syscall, msg->data);
-      return EXIT_SYSCALL;
+      ret = currData[2];
+      printf("<exit(%d)>\n", ret);
+      exit(ret);
 
     case 4: // WRITE
-      char *str = malloc(msg->nbytes + 1);
-      memcpy(str, data_mem + msg->data, msg->nbytes);
-      printf("<%s(1, 0x%04lx, %zu)%s => %zu>\n", syscall, msg->data,
-             msg->nbytes, str, ret);
-      break;
+      nbytes = currData[3];
+      data = currData[5];
+      ret = nbytes;
 
-    case 17: // BRK, figure out what to do here
-      // format <brk(0x0000) => 0>, check source files
-      printf("<%s>\n", syscall);
-      break;
+      char *string = malloc(nbytes + 1);
+      memcpy(string, data_mem + currData[5], nbytes);
+      string[nbytes] = '\0';
+      printf("<write(1, 0x%04lx, %zu)%s => %d>\n", data, nbytes, string, ret);
+      free(string);
 
-    case 54: // IOCTL, figure out what to do here
-      // format <ioctl(1, 0x0000, 0x0000)>, check source files
-      printf("<%s>\n", syscall);
-      break;
+      regs[AX] = 0;
+      memcpy(data_mem + regs[BX] + 2, &ret, 2);
+      return EXIT_CONTINUE;
+
+    case 17: // BRK
+      addr = *(uint16_t *)(data_mem + regs[BX] + 10);
+      printf("<brk(0x%04x) => 0>\n", addr);
+
+      ret = 0;
+      regs[AX] = 0;
+      memcpy(data_mem + regs[BX] + 18, &addr, 2);
+      memcpy(data_mem + regs[BX] + 2, &ret, 2);
+      return EXIT_CONTINUE;
+
+    case 54:
+      ret = 0xffea; // 0x10000 - EINVAL;
+      req = *(uint16_t *)(data_mem + regs[BX] + 8);
+      addr = *(uint16_t *)(data_mem + regs[BX] + 18);
+      printf("<ioctl(1, 0x%04x, 0x%04x)>\n", req, addr);
+
+      regs[AX] = 0;
+      memcpy(data_mem + regs[BX] + 2, &ret, 2);
+      return EXIT_CONTINUE;
     }
     break;
   case JAE:
-    // JAE macro logic here
+    if (!flags[CF]) {
+      IP = *(node->imm);
+      return EXIT_IPCHANGED;
+    }
     break;
   case JB:
-    // JB macro logic here
+    if (flags[CF]) {
+      IP = *(node->imm);
+      return EXIT_IPCHANGED;
+    }
     break;
   case JBE:
-    // JBE macro logic here
+    if (flags[CF] || flags[ZF]) {
+      IP = *(node->imm);
+      return EXIT_IPCHANGED;
+    }
     break;
   case JE:
-    // JE macro logic here
+    if (flags[ZF]) {
+      IP = *(node->imm);
+      return EXIT_IPCHANGED;
+    }
     break;
   case JLE:
-    // JLE macro logic here
+    if (flags[ZF] || flags[SF] != flags[OF]) {
+      IP = *(node->imm);
+      return EXIT_IPCHANGED;
+    }
     break;
   case JNB:
     if (!flags[CF]) {
@@ -289,128 +462,326 @@ int interpret(NodeAST *node) {
     }
     break;
   case JNL:
-    // JNL macro logic here
+    if (flags[SF] == flags[OF]) {
+      IP = *(node->imm);
+      return EXIT_IPCHANGED;
+    }
     break;
   case JNLE:
-    // JNLE macro logic here
+    if (!flags[ZF] && flags[SF] == flags[OF]) {
+      IP = *(node->imm);
+      return EXIT_IPCHANGED;
+    }
     break;
   case JNBE:
-    // JNBE macro logic here
+    if (!flags[CF] && !flags[ZF]) {
+      IP = *(node->imm);
+      return EXIT_IPCHANGED;
+    }
     break;
   case JMP:
-    IP = *(node->imm);
-    return EXIT_IPCHANGED;
+    // JMP imm
+    if (node->imm != NULL) {
+      IP = *(node->imm);
+      return EXIT_IPCHANGED;
+    }
+
+    // JMP r16
+    if (*(node->nreg) == 1) {
+      IP = regs[*(node->regs[0])];
+      return EXIT_IPCHANGED;
+    }
+
     break;
   case JL:
-    // JL macro logic here
+    if (flags[SF] != flags[OF]) {
+      IP = *(node->imm);
+      return EXIT_IPCHANGED;
+    }
     break;
   case LEA:
     // LEA r16, mOp
-    regs[*(node->regs[0])] = mOp;
+    if (*(node->nreg) == 1 && node->mOp != NULL) {
+      regs[*(node->regs[0])] = mOp;
+      return EXIT_CONTINUE;
+    }
+    printf("UNPATCHED LEA\n");
     break;
   case LOOP:
-    // LOOP macro logic here
+    printf("UNPATCHED LOOP\n");
     break;
   case MOV:
     if (*(node->nreg) == 2) {
       // MOV r16, r16
       regs[*(node->regs[0])] = regs[*(node->regs[1])];
-      break;
+      return EXIT_CONTINUE;
     }
 
     if (*(node->nreg) == 1 && node->mOp != NULL) {
       if (!strcmp(node->op1, node->mOp)) {
-        // MOV mOp, r16
-        memcpy(data_mem + mOp, regs + *(node->regs[0]), 2);
-        break;
+        if (*(node->regs[0]) < 8) {
+          // MOV mOp, r16
+          memcpy(data_mem + mOp, regs + *(node->regs[0]), 2);
+          return EXIT_CONTINUE;
+        } else if (*(node->regs[0]) > 7 && *(node->regs[0]) < 12) {
+          // MOV mOp, r8
+          memcpy(data_mem + mOp, regs + *(node->regs[0]) - 8, 1);
+          return EXIT_CONTINUE;
+        } else {
+          printf("UNPATCHED MOV (r8 high)\n");
+          return EXIT_CONTINUE;
+        }
       } else {
-        // MOV r16, mOp
-        memcpy(regs + *(node->regs[0]), data_mem + mOp, 2);
-        break;
+        if (*(node->regs[0]) < 8) {
+          // MOV r16, mOp
+          memcpy(regs + *(node->regs[0]), data_mem + mOp, 2);
+          return EXIT_CONTINUE;
+        } else if (*(node->regs[0]) > 7 && *(node->regs[0]) < 12) {
+          // MOV r8, mOp
+          memcpy(regs + *(node->regs[0]) - 8, data_mem + mOp, 1);
+          return EXIT_CONTINUE;
+        } else {
+          printf("UNPATCHED MOV (r8 high)\n");
+          return EXIT_CONTINUE;
+        }
       }
     }
 
     // MOV r16, imm16
-    regs[*(node->regs[0])] = *(node->imm);
+    if (*(node->nreg) == 1 && node->imm != NULL) {
+      regs[*(node->regs[0])] = *(node->imm);
+      return EXIT_CONTINUE;
+    }
+
+    // MOV mOp, imm16
+    if (*(node->nreg) == 0 && node->mOp != NULL && node->imm != NULL) {
+      memcpy(data_mem + mOp, node->imm, 2);
+      return EXIT_CONTINUE;
+    }
+
+    printf("UNPATCHED MOV\n");
     break;
   case MUL:
-    // MUL macro logic here
+    printf("UNPATCHED MUL\n");
     break;
   case NEG:
-    // NEG macro logic here
+    if (*(node->nreg) == 1) {
+      // NEG r16
+      process_operation(&regs[*(node->regs[0])], NULL, OP_NEG);
+      return EXIT_CONTINUE;
+    }
+
+    printf("UNPATCHED NEG\n");
     break;
   case OR:
-    // OR macro logic here
+    if (*(node->nreg) == 2) {
+      // OR r16, r16
+      process_operation(&regs[*(node->regs[0])], &regs[*(node->regs[1])],
+                        OP_OR);
+      return EXIT_CONTINUE;
+    }
+
+    // OR r16, imm16
+    if (*(node->nreg) == 1 && node->imm != NULL) {
+      process_operation(&regs[*(node->regs[0])], node->imm, OP_OR);
+      return EXIT_CONTINUE;
+    }
+
+    // OR mOp, imm16
+    if (*(node->nreg) == 0 && node->mOp != NULL && node->imm != NULL) {
+      process_operation((uint16_t *)(data_mem + mOp), node->imm, OP_OR);
+      return EXIT_CONTINUE;
+    }
+
+    // OR r16, mOp
+    if (*(node->nreg) == 1 && node->mOp != NULL) {
+      process_operation(&regs[*(node->regs[0])], (uint16_t *)(data_mem + mOp),
+                        OP_OR);
+      return EXIT_CONTINUE;
+    }
+
+    printf("UNPATCHED OR\n");
     break;
   case POP:
-    // POP macro logic here
+    if (*(node->nreg) == 1) {
+      // POP r16
+      regs[*(node->regs[0])] = pop16_stack();
+      return EXIT_CONTINUE;
+    }
+
+    printf("UNPATCHED POP\n");
     break;
   case PUSH:
-    // Push the value of the operand onto the stack
     if (*(node->nreg) == 1) {
       // PUSH r16
       push16_stack(regs[*(node->regs[0])]);
-      break;
+      return EXIT_CONTINUE;
     }
+
+    if (node->mOp != NULL) {
+      // PUSH mOp
+      push16_stack(*(uint16_t *)(data_mem + mOp));
+      return EXIT_CONTINUE;
+    }
+
+    printf("UNPATCHED PUSH\n");
     break;
   case RCL:
-    // RCL macro logic here
+    printf("UNPATCHED RCL\n");
     break;
   case REP:
-    // REP macro logic here
+    printf("UNPATCHED REP\n");
     break;
   case RET:
-    // RET macro logic here
-    break;
-  case SAR:
-    // SAR macro logic here
-    break;
-  case SBB:
-    // SBB macro logic here
-    break;
-  case SHL:
-    // SHL macro logic here
-    break;
-  case SHR:
-    // SHR macro logic here
-    break;
-  case STD:
-    // STD macro logic here
-    break;
-  case SUB:
-    if (*(node->nreg) == 1) {
-      // SUB r16, imm16
-      process_operation(regs + *(node->regs[0]), node->imm, OP_MINUS);
-    } else {
-      // SUB mOp, imm16
-      uint16_t *op1_ptr = (uint16_t *)(data_mem + mOp);
-      process_operation(op1_ptr, node->imm, OP_MINUS);
+    // RET imm16
+    if (node->imm != NULL) {
+      IP = pop16_stack();
+      *sp += *(node->imm);
+      return EXIT_IPCHANGED;
     }
-    break;
-  case TEST:
-    // Process AND operation between op1 and op2 and update the flags
-    if (*(node->nreg) == 1 && node->imm != NULL) {
-      // TEST r8, imm16
-      if (*(node->regs[0]) > 7 && *(node->regs[0]) < 12) {
-        // Operate on the lower 8 bits of the register
-        uint16_t *op1_ptr = (uint16_t *)(regs + *(node->regs[0]) - 8);
-        uint8_t op1 = (uint8_t)(*op1_ptr);
-        process_operation((uint16_t *)&op1, node->imm, OP_AND);
-        break;
-      }
+
+    // RET
+    IP = pop16_stack();
+    return EXIT_IPCHANGED;
+  case SAR:
+    // SAR r16, CL
+    if (*(node->nreg) == 2) {
+      // Get the number of times to shift from the lower 8 bits of CX
+      uint8_t *shift = malloc(sizeof(uint8_t));
+      *shift = *(node->regs[1]) & 0xFF;
+      process_operation(&regs[*(node->regs[0])], (uint16_t *)shift, OP_SAR);
+      return EXIT_CONTINUE;
     }
 
     break;
+  case SBB:
+    printf("UNPATCHED SBB\n");
+    break;
+  case SHL:
+    // SHL r16, 1
+    if (*(node->nreg) == 1 && node->imm != NULL && *(node->imm) == 1) {
+      uint16_t *shift = malloc(sizeof(uint16_t));
+      *shift = 1;
+      process_operation(&regs[*(node->regs[0])], shift, OP_SHL);
+      return EXIT_CONTINUE;
+    }
+    break;
+  case SHR:
+    printf("UNPATCHED SHR\n");
+    break;
+  case STD:
+    printf("UNPATCHED STD\n");
+    break;
+  case SUB:
+    // SUB r16, imm16
+    if (*(node->nreg) == 1 && node->imm != NULL) {
+      process_operation(regs + *(node->regs[0]), node->imm, OP_MINUS);
+      return EXIT_CONTINUE;
+    }
+
+    // SUB mOp, imm16
+    if (*(node->nreg) == 0 && node->mOp != NULL && node->imm != NULL) {
+      process_operation((uint16_t *)(data_mem + mOp), node->imm, OP_MINUS);
+      return EXIT_CONTINUE;
+    }
+
+    // SUB r16, mOp
+    if (*(node->nreg) == 1 && node->mOp != NULL) {
+      // uint16_t *op1_ptr = (uint16_t *)(regs + *(node->regs[0]));
+      process_operation(&regs[*(node->regs[0])], (uint16_t *)(data_mem + mOp),
+                        OP_MINUS);
+      return EXIT_CONTINUE;
+    }
+
+    printf("UNPATCHED SUB\n");
+    break;
+  case TEST:
+    // TEST r16, r16
+    if (*(node->nreg) == 2) {
+      process_operation(&regs[*(node->regs[0])], &regs[*(node->regs[1])],
+                        OP_TEST);
+      return EXIT_CONTINUE;
+    }
+
+    if (*(node->nreg) == 1 && node->imm != NULL) {
+      if (*node->regs[0] < 8) {
+        // TEST r16, imm16
+        process_operation(&regs[*(node->regs[0])], node->imm, OP_TEST);
+        // printf("TEST - TO BE PATCHED\n");
+        return EXIT_CONTINUE;
+      } else if (*(node->regs[0]) > 7 && *(node->regs[0]) < 12) {
+        // TEST r8, imm16
+        process_operation((uint16_t *)(regs + *(node->regs[0]) - 8), node->imm,
+                          OP_TEST);
+        return EXIT_CONTINUE;
+      } else {
+        printf("UNPATCHED TEST (r8 high)\n");
+        return EXIT_CONTINUE;
+      }
+    }
+
+    // TEST mOp, imm16
+    if (*(node->nreg) == 0 && node->mOp != NULL && node->imm != NULL) {
+      uint16_t *op1_ptr = (uint16_t *)(data_mem + mOp);
+
+      if (node->spe != NULL) {
+        if (!strcmp(node->spe, "byte")) {
+          uint8_t op1 = (uint8_t)(*op1_ptr);
+          process_operation((uint16_t *)&op1, node->imm, OP_TEST);
+          return EXIT_CONTINUE;
+        }
+      } else {
+        process_operation(op1_ptr, node->imm, OP_TEST);
+        return EXIT_CONTINUE;
+      }
+    }
+
+    printf("UNPATCHED TEST\n");
+    break;
   case XCHG:
-    // XCHG macro logic here
+    // XCHG r16, r16
+    if (*(node->nreg) == 2) {
+      uint16_t tmp = regs[*(node->regs[0])];
+      regs[*(node->regs[0])] = regs[*(node->regs[1])];
+      regs[*(node->regs[1])] = tmp;
+      return EXIT_CONTINUE;
+    }
     break;
   case XOR:
-    // XOR r16, r16
-    regs[*(node->regs[0])] ^= regs[*(node->regs[1])];
-    update_flags(regs[*(node->regs[0])]); // TDOO: modify ?
+    if (*(node->nreg) == 2) {
+      if (*(node->regs[0]) == *(node->regs[1])) {
+        if (*(node->regs[0]) < 8) {
+          // XOR r16, r16
+          regs[*(node->regs[0])] = 0;
+          set_flag(ZF, 1);
+          set_flag(CF, 0); // ?? maybe
+          set_flag(SF, 0); // ?? maybe
+          return EXIT_CONTINUE;
+        } else if (*(node->regs[0]) > 11) {
+          // XOR r8, r8 (high)
+
+          // access the high byte of the register & set it to 0
+          uint8_t *highByte = (uint8_t *)&regs[*(node->regs[0]) - 12] + 1;
+          *highByte = 0;
+
+          set_flag(ZF, 1);
+          set_flag(CF, 0); // ?? maybe
+          set_flag(SF, 0); // ?? maybe
+          return EXIT_CONTINUE;
+        } else {
+          printf("UNPATCHED XOR r8 low\n");
+        }
+
+      } else {
+        printf("UNPATCHED XOR (not r16, r16 but not the same registers)\n");
+      }
+    }
+
+    printf("UNPATCHED XOR\n");
     break;
   case UNDEFINED:
-    // UNDEFINED macro logic here
+    // PROBABLY NEVER REACHED
+    printf("UNPATCHED UNDEFINED\n");
     break;
   default:
     errx(1, "Undefined instruction!");

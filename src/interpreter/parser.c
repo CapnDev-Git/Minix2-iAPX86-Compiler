@@ -23,6 +23,16 @@ char *format_ASM(char **tokens, size_t n) {
   return formatted;
 }
 
+int isHex(const char *str) {
+  while (*str != '\0') {
+    if (!isxdigit(*str))
+      return 0;
+    str++;
+  }
+
+  return 1;
+}
+
 void get_node(NodeAST *node, char *line) {
   size_t n;
   char **tokens;
@@ -33,7 +43,7 @@ void get_node(NodeAST *node, char *line) {
     errx(1, "Can't tokenize the given ASM line!");
 
   // Initialize the new node with the static fields
-  node->adr = strtoul(strdup(tokens[0]), NULL, 16);
+  node->addr = strtoul(strdup(tokens[0]), NULL, 16);
   node->ASM = strdup(format_ASM(tokens, n));
   node->opC = strdup(tokens[2]); // instruction always at index 2
   node->opLen = strlen(tokens[1]) / 2;
@@ -56,7 +66,7 @@ void get_node(NodeAST *node, char *line) {
         node->op2 = strdup(tokens[j]);
 
       node->mOp = strdup(tokens[j]);
-    } else if (isdigit(tokens[j][0]) || tokens[j][0] == '-') {
+    } else if (isHex(tokens[j]) || tokens[j][0] == '-') {
       /* IMMEDIATE DATA */
 
       // Set it as the operand 1 if it's not already set, otherwise set it as

@@ -110,13 +110,13 @@ void disassemble() {
       int ret = interpret(&node);
 
       // Exit if the instruction was an exit syscall
-      if (ret == EXIT_SYSCALL) {
-        printf("Program exited");
+      if (ret == EXIT_SYSCALL)
         return;
-      }
     }
 
     // Update the address to go to IP (changed by opcode function / interpreter)
     a = IP;
   }
 }
+
+// 0xffbe-0x24 = 65452 = 0xffac

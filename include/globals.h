@@ -9,7 +9,7 @@
 
 // AST node structure
 typedef struct {
-  size_t adr;
+  size_t addr;
   char *ASM; // to remove
   char *opC;
   size_t opLen;
@@ -24,12 +24,6 @@ typedef struct {
   size_t *nreg;
   size_t **regs;
 } NodeAST;
-
-// System call structure
-typedef struct {
-  uint16_t type;
-  const char *name;
-} SyscallType;
 
 // System call return structure
 typedef struct {
@@ -105,11 +99,10 @@ extern const char *SEGREG[SR_SIZE];
 extern const char *instructions[INSTR_SIZE];
 extern const char *registers[ALL_REG_SIZE];
 
-extern const SyscallType syscallTypes[SYSCALLS_SIZE];
 extern const SyscallReturn syscallReturns[SYSCALLS_SIZE];
 
 extern uint16_t regs[REG_SIZE];
-extern unsigned char flags[FLAG_SIZE];
+extern int flags[FLAG_SIZE];
 extern uint16_t *sp;
 extern uint16_t IP;
 
@@ -120,6 +113,18 @@ extern uint16_t IP;
 #define OP_DIV '/'
 #define OP_CMP 'c'
 #define OP_AND '&'
+#define OP_OR '|'
+#define OP_XOR '^'
+#define OP_TEST 't'
+#define OP_DEC 'd'
+#define OP_INC 'i'
+#define OP_NEG 'n'
+
+// Bitshifts
+#define OP_SHL 's'
+#define OP_SHR 'r'
+#define OP_SAR 'a'
+#define OP_NOT 'o'
 
 // Instructions
 #define ADC 0
@@ -236,3 +241,4 @@ void NodeAST_init(NodeAST *node);
 
 // Stack functions
 void push16_stack(uint16_t val);
+uint16_t pop16_stack();

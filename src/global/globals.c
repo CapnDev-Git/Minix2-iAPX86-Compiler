@@ -31,16 +31,13 @@ const char *registers[ALL_REG_SIZE] = {"ax", "bx", "cx", "dx", "sp", "bp",
                                        "si", "di", "al", "bl", "cl", "dl",
                                        "ah", "bh", "ch", "dh"};
 
-const SyscallType syscallTypes[SYSCALLS_SIZE] = {
-    {1, "exit"}, {4, "write"}, {17, "brk"}, {54, "ioctl"}};
-
 const SyscallReturn syscallReturns[SYSCALLS_SIZE] = {
     {1, 0}, {4, 6}, {17, 0}, {54, -1}};
 
 unsigned char text_mem[MEMORY_SIZE] = {0}; // reset the text memory
 unsigned char data_mem[MEMORY_SIZE] = {0}; // reset the data memory
 uint16_t regs[REG_SIZE] = {0};
-unsigned char flags[FLAG_SIZE] = {'-', '-', '-', '-'};
+int flags[FLAG_SIZE] = {0}; //{'-', '-', '-', '-'};
 uint16_t *sp = &regs[SP];
 uint16_t IP = 0;
 
@@ -88,7 +85,7 @@ void vector_free(Vector *vector) {
 
 void NodeAST_init(NodeAST *node) {
   // Initialize the new node
-  node->adr = 0;
+  node->addr = 0;
   node->ASM = NULL;
   node->opC = NULL;
   node->opLen = 0;
@@ -117,4 +114,10 @@ void NodeAST_init(NodeAST *node) {
 void push16_stack(uint16_t val) {
   data_mem[--(*sp)] = val >> 8;
   data_mem[--(*sp)] = val;
+}
+
+uint16_t pop16_stack() {
+  uint16_t val = data_mem[(*sp)++];
+  val |= data_mem[(*sp)++] << 8;
+  return val;
 }

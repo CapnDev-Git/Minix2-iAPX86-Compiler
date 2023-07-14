@@ -22,7 +22,7 @@ void print_regs_header();
 /// @param f The flags
 /// @param l The line
 /// @param m The memory content (optional)
-void print_regs_status(uint16_t *r, char *f, char *l, char *m);
+void print_regs_status(uint16_t *r, int *f, char *l, char *m);
 
 /// @brief Print OK
 /// @param filename The filename
