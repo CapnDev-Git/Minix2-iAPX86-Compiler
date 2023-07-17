@@ -194,15 +194,8 @@ int interpret(NodeAST *node) {
   // Print the registers status
   print_regs_status(regs, flags, node->ASM, memory_content);
 
-  // // DEBUG FOR R8 REGISTERS
-  // if ((*node->nreg) > 0 && *(node->regs[0]) > 7)
-  //   printf("CHECK HALF OPERATOR ^\n");
-
   // Interpret the instruction
   switch (get_index(instructions, INSTR_SIZE, node->opC)) {
-  case ADC:
-    printf("UNPATCHED ADC\n");
-    break;
   case ADD:
     // ADD r16, r16
     if (*(node->nreg) == 2) {
@@ -235,8 +228,6 @@ int interpret(NodeAST *node) {
       process_operation((uint16_t *)(data_mem + mOp), node->imm, OP_PLUS);
       return EXIT_CONTINUE;
     }
-
-    printf("UNPATCHED ADD\n");
     break;
   case AND:
     // AND mOp, imm16
@@ -257,8 +248,6 @@ int interpret(NodeAST *node) {
                         OP_AND);
       return EXIT_CONTINUE;
     }
-
-    printf("UNPATCHED AND\n");
     break;
   case CALL:
     push16_stack(node->addr + node->opLen);
@@ -274,15 +263,10 @@ int interpret(NodeAST *node) {
       IP = regs[*(node->regs[0])];
       return EXIT_IPCHANGED;
     }
-
-    printf("UNPATCHED CALL\n");
   case CBW:
     // CBW
     regs[AX] = (int16_t)(int8_t)(regs[AX] & 0xFF);
     return EXIT_CONTINUE;
-  case CLD:
-    printf("UNPATCHED CLD\n");
-    break;
   case CMP:
     // CMP r16, imm16
     if (*(node->nreg) == 1 && node->imm != NULL) {
@@ -324,9 +308,6 @@ int interpret(NodeAST *node) {
                         OP_CMP);
       return EXIT_CONTINUE;
     }
-
-    printf("UNPATCHED CMP\n");
-    break;
   case CWD:
     // CWD
     regs[DX] = (int16_t)(regs[AX] < 0 ? 0xFFFF : 0x0000);
@@ -343,9 +324,6 @@ int interpret(NodeAST *node) {
       process_operation((uint16_t *)(data_mem + mOp), NULL, OP_DEC);
       return EXIT_CONTINUE;
     }
-
-    printf("UNPATCHED DEC\n");
-    break;
   case DIV:
     // DIV r16
     if (*(node->nreg) == 1) {
@@ -359,13 +337,6 @@ int interpret(NodeAST *node) {
       regs[DX] = dividend % divisor;
       return EXIT_CONTINUE;
     }
-
-    break;
-  case HLT:
-    printf("UNPATCHED HLT\n");
-    break;
-  case IN:
-    printf("UNPATCHED IN\n");
     break;
   case INC:
     // INC mOp
@@ -379,8 +350,6 @@ int interpret(NodeAST *node) {
       process_operation(&regs[*(node->regs[0])], NULL, OP_INC);
       return EXIT_CONTINUE;
     }
-
-    printf("UNPATCHED INC\n");
     break;
   case INT:
     uint16_t ret = 0, addr = 0, req = 0;
@@ -394,7 +363,7 @@ int interpret(NodeAST *node) {
     switch (currData[1]) {
     case 1: // EXIT
       ret = currData[2];
-      printf("<exit(%d)>\n", ret);
+      fprintf(stderr, "<exit(%d)>\n", ret);
       exit(ret);
 
     case 4: // WRITE
@@ -405,7 +374,9 @@ int interpret(NodeAST *node) {
       char *string = malloc(nbytes + 1);
       memcpy(string, data_mem + currData[5], nbytes);
       string[nbytes] = '\0';
-      printf("<write(1, 0x%04lx, %zu)%s => %d>\n", data, nbytes, string, ret);
+      fprintf(stderr, "<write(1, 0x%04lx, %zu)", data, nbytes);
+      fprintf(stdout, "%s", string);
+      fprintf(stderr, " => %d>\n", ret);
       free(string);
 
       regs[AX] = 0;
@@ -414,7 +385,7 @@ int interpret(NodeAST *node) {
 
     case 17: // BRK
       addr = *(uint16_t *)(data_mem + regs[BX] + 10);
-      printf("<brk(0x%04x) => 0>\n", addr);
+      fprintf(stderr, "<brk(0x%04x) => 0>\n", addr);
 
       ret = 0;
       regs[AX] = 0;
@@ -426,7 +397,7 @@ int interpret(NodeAST *node) {
       ret = 0xffea; // 0x10000 - EINVAL;
       req = *(uint16_t *)(data_mem + regs[BX] + 8);
       addr = *(uint16_t *)(data_mem + regs[BX] + 18);
-      printf("<ioctl(1, 0x%04x, 0x%04x)>\n", req, addr);
+      fprintf(stderr, "<ioctl(1, 0x%04x, 0x%04x)>\n", req, addr);
 
       regs[AX] = 0;
       memcpy(data_mem + regs[BX] + 2, &ret, 2);
@@ -519,10 +490,6 @@ int interpret(NodeAST *node) {
       regs[*(node->regs[0])] = mOp;
       return EXIT_CONTINUE;
     }
-    printf("UNPATCHED LEA\n");
-    break;
-  case LOOP:
-    printf("UNPATCHED LOOP\n");
     break;
   case MOV:
     if (*(node->nreg) == 2) {
@@ -541,9 +508,6 @@ int interpret(NodeAST *node) {
           // MOV mOp, r8
           memcpy(data_mem + mOp, regs + *(node->regs[0]) - 8, 1);
           return EXIT_CONTINUE;
-        } else {
-          printf("UNPATCHED MOV (r8 high)\n");
-          return EXIT_CONTINUE;
         }
       } else {
         if (*(node->regs[0]) < 8) {
@@ -553,9 +517,6 @@ int interpret(NodeAST *node) {
         } else if (*(node->regs[0]) > 7 && *(node->regs[0]) < 12) {
           // MOV r8, mOp
           memcpy(regs + *(node->regs[0]) - 8, data_mem + mOp, 1);
-          return EXIT_CONTINUE;
-        } else {
-          printf("UNPATCHED MOV (r8 high)\n");
           return EXIT_CONTINUE;
         }
       }
@@ -572,11 +533,6 @@ int interpret(NodeAST *node) {
       memcpy(data_mem + mOp, node->imm, 2);
       return EXIT_CONTINUE;
     }
-
-    printf("UNPATCHED MOV\n");
-    break;
-  case MUL:
-    printf("UNPATCHED MUL\n");
     break;
   case NEG:
     if (*(node->nreg) == 1) {
@@ -584,8 +540,6 @@ int interpret(NodeAST *node) {
       process_operation(&regs[*(node->regs[0])], NULL, OP_NEG);
       return EXIT_CONTINUE;
     }
-
-    printf("UNPATCHED NEG\n");
     break;
   case OR:
     if (*(node->nreg) == 2) {
@@ -613,8 +567,6 @@ int interpret(NodeAST *node) {
                         OP_OR);
       return EXIT_CONTINUE;
     }
-
-    printf("UNPATCHED OR\n");
     break;
   case POP:
     if (*(node->nreg) == 1) {
@@ -622,8 +574,6 @@ int interpret(NodeAST *node) {
       regs[*(node->regs[0])] = pop16_stack();
       return EXIT_CONTINUE;
     }
-
-    printf("UNPATCHED POP\n");
     break;
   case PUSH:
     if (*(node->nreg) == 1) {
@@ -637,14 +587,6 @@ int interpret(NodeAST *node) {
       push16_stack(*(uint16_t *)(data_mem + mOp));
       return EXIT_CONTINUE;
     }
-
-    printf("UNPATCHED PUSH\n");
-    break;
-  case RCL:
-    printf("UNPATCHED RCL\n");
-    break;
-  case REP:
-    printf("UNPATCHED REP\n");
     break;
   case RET:
     // RET imm16
@@ -669,9 +611,6 @@ int interpret(NodeAST *node) {
     }
 
     break;
-  case SBB:
-    printf("UNPATCHED SBB\n");
-    break;
   case SHL:
     // SHL r16, 1
     if (*(node->nreg) == 1 && node->imm != NULL && *(node->imm) == 1) {
@@ -689,14 +628,6 @@ int interpret(NodeAST *node) {
       process_operation(&regs[*(node->regs[0])], shift, OP_SHL);
       return EXIT_CONTINUE;
     }
-
-    printf("UNPATCHED SHL\n");
-    break;
-  case SHR:
-    printf("UNPATCHED SHR\n");
-    break;
-  case STD:
-    printf("UNPATCHED STD\n");
     break;
   case SUB:
     // SUB r16, imm16
@@ -718,8 +649,6 @@ int interpret(NodeAST *node) {
                         OP_MINUS);
       return EXIT_CONTINUE;
     }
-
-    printf("UNPATCHED SUB\n");
     break;
   case TEST:
     // TEST r16, r16
@@ -740,9 +669,6 @@ int interpret(NodeAST *node) {
         process_operation((uint16_t *)(regs + *(node->regs[0]) - 8), node->imm,
                           OP_TEST);
         return EXIT_CONTINUE;
-      } else {
-        printf("UNPATCHED TEST (r8 high)\n");
-        return EXIT_CONTINUE;
       }
     }
 
@@ -761,8 +687,6 @@ int interpret(NodeAST *node) {
         return EXIT_CONTINUE;
       }
     }
-
-    printf("UNPATCHED TEST\n");
     break;
   case XCHG:
     // XCHG r16, r16
@@ -794,20 +718,9 @@ int interpret(NodeAST *node) {
           set_flag(CF, 0); // ?? maybe
           set_flag(SF, 0); // ?? maybe
           return EXIT_CONTINUE;
-        } else {
-          printf("UNPATCHED XOR r8 low\n");
         }
-
-      } else {
-        printf("UNPATCHED XOR (not r16, r16 but not the same registers)\n");
       }
     }
-
-    printf("UNPATCHED XOR\n");
-    break;
-  case UNDEFINED:
-    // PROBABLY NEVER REACHED
-    printf("UNPATCHED UNDEFINED\n");
     break;
   default:
     errx(1, "Undefined instruction!");

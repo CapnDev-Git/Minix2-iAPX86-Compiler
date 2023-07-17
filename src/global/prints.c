@@ -33,20 +33,20 @@ void print_hexdump(const unsigned char *buffer, size_t buffer_size) {
 }
 
 void print_regs_header() {
-  printf(" AX   BX   CX   DX   SP   BP   SI   DI  FLAGS IP\n");
+  fprintf(stderr, " AX   BX   CX   DX   SP   BP   SI   DI  FLAGS IP\n");
 }
 
 void print_regs_status(uint16_t *r, int *f, char *l, char *m) {
-  printf(REGS_STATUS, r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7]);
-  printf(FLAGS_STATUS, f[0] ? 'O' : '-', f[1] ? 'S' : '-', f[2] ? 'Z' : '-',
-         f[3] ? 'C' : '-');
-  printf(LINE_STATUS, l);
+  fprintf(stderr, REGS_STATUS, r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7]);
+  fprintf(stderr, FLAGS_STATUS, f[0] ? 'O' : '-', f[1] ? 'S' : '-',
+          f[2] ? 'Z' : '-', f[3] ? 'C' : '-');
+  fprintf(stderr, LINE_STATUS, l);
 
   // Print the memory content if necessary
   if (m != NULL)
-    printf(MEMORY_CONTENT, m);
+    fprintf(stderr, MEMORY_CONTENT, m);
   else
-    printf("\n");
+    fprintf(stderr, "\n");
 }
 
 void printOK(const char *filename) {
@@ -114,7 +114,7 @@ void print4b(const unsigned char *p, size_t a, size_t il, char *line) {
 }
 
 void print_node(NodeAST *node) {
-  printf("Address: %lx\n", node->adr);
+  printf("Address: %lx\n", node->addr);
   printf("ASM: %s\n", node->ASM);
   printf("Instruction: %s\n", node->opC);
 
