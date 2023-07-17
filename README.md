@@ -1,4 +1,4 @@
-# iAPX86 Interpreter (Minix2-OS)
+# Minix2-OS (iAPX86) Compiler - Disassembler & Interpreter
 
 ## Introduction
 
