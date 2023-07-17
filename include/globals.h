@@ -77,6 +77,8 @@ typedef struct {
 #define EXIT_IPCHANGED -2
 
 // Global variables
+extern int DISASSEMBLE;
+extern int DEBUG;
 extern int INTERPRET;
 
 extern size_t TEXT_SIZE;

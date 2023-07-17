@@ -1,52 +1,48 @@
 #include "main.h"
 
 int main(int argc, char **argv) {
-  // Check the number of arguments
-  if (argc < 3)
-    errx(1, "Wrong number of arguments.\nUsage: %s <flags> <file>", argv[0]);
-
-  // Dump the file in both memories
-  char *path = argv[2];
-  hexdump(path);
-
   // Check the flag & process the file accordingly
   if (!strcmp(argv[1], "-d")) {
     // Exit of no file to dump provided
     if (argc == 2)
       errx(1, "File to dump not provided.\nUsage: %s -d <file>", argv[0]);
 
-    // Disassemble the binary
-    disassemble();
+    // Set the flag to dump
+    DISASSEMBLE = 1;
+  } else if (!strcmp(argv[1], "-m")) {
+    // Exit of no file to interpret provided
+    if (argc == 2)
+      errx(1, "File to interpret not provided.\nUsage: %s -m <file>", argv[0]);
 
+    // Set the flag to debug-interpret
+    DEBUG = INTERPRET = 1;
+  } else {
+    INTERPRET = 1; // No flag => INTERPRET
+  }
+
+  // Dump the file in text & data memories
+  char *path = argv[argc - 1];
+  hexdump(path); // Contains error for unexisting file
+
+  if (DEBUG) { // => interpret as well
+    // Setup the memory for the interpreter
+    setup_memory(argc, argv);
+
+    if (DEBUG) { // Print only if -m
+      // Interpret the binary
+      print_regs_header();
+    }
+  }
+
+  // Disassemble the binary (doesn't interpret if only -d)
+  disassemble();
+
+  if (DISASSEMBLE) {
     // Print the ASM code to STDERR (optimized printing)
     for (size_t i = 0; i <= ASM_MAX_INDEX; i++) {
       if (strcmp(ASM[i], ""))
         fprintf(stderr, "%s\n", ASM[i]);
     }
-  } else if (!strcmp(argv[1], "-m")) { // INTERPRET
-    // Exit of no file to interpret provided
-    if (argc == 2)
-      errx(1, "File to interpret not provided.\nUsage: %s -m <file>", argv[0]);
-
-    // Set the flag to interpret
-    INTERPRET = 1;
-
-    // Setup the memory for the interpreter
-    setup_memory(argc, argv);
-
-    // Interpret the binary
-    print_regs_header();
-
-    // Disassemble & interpret the binary
-    disassemble();
-
-    // DONT FORGET TO ACTUALLY EXECUTE IT AT THE END
-    // TODO, do like ASM global array to print to stderr when done
-  } else {
-    // Raise an error if the flag is unknown
-    errx(1, "Unknown flag: %s\nUsage: %s <flags> <file>", argv[1], argv[0]);
+    return EXIT_SUCCESS;
   }
-
-  // Free & exit
-  return 0;
 }

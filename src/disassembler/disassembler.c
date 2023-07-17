@@ -56,7 +56,7 @@ void disassemble() {
       f0x8, f0x9, f0xa, f0xb, f0xc, f0xd, f0xe, f0xf};
 
   // Keep looping until the end of the program
-  while (a < TEXT_SIZE) {
+  while (1) {
     // Get the opcode
     op = text_mem[a] >> 4;
 
@@ -100,7 +100,7 @@ void disassemble() {
     opcodes[op](a, text_mem[a] & 0b1111);
 
     // Interpret the disassembled instruction if the flag is set
-    if (INTERPRET) {
+    if (INTERPRET) { // => interpret
       // Define the node
       NodeAST node;
       NodeAST_init(&node);
@@ -108,15 +108,9 @@ void disassemble() {
       // Parse & interpret the node
       get_node(&node, ASM[a]);
       int ret = interpret(&node);
-
-      // Exit if the instruction was an exit syscall
-      if (ret == EXIT_SYSCALL)
-        return;
     }
 
     // Update the address to go to IP (changed by opcode function / interpreter)
     a = IP;
   }
 }
-
-// 0xffbe-0x24 = 65452 = 0xffac

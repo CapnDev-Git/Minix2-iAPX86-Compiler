@@ -192,7 +192,8 @@ int interpret(NodeAST *node) {
   }
 
   // Print the registers status
-  print_regs_status(regs, flags, node->ASM, memory_content);
+  if (DEBUG)
+    print_regs_status(regs, flags, node->ASM, memory_content);
 
   // Interpret the instruction
   switch (get_index(instructions, INSTR_SIZE, node->opC)) {
@@ -363,7 +364,8 @@ int interpret(NodeAST *node) {
     switch (currData[1]) {
     case 1: // EXIT
       ret = currData[2];
-      fprintf(stderr, "<exit(%d)>\n", ret);
+      if (DEBUG)
+        fprintf(stderr, "<exit(%d)>\n", ret);
       exit(ret);
 
     case 4: // WRITE
@@ -374,9 +376,14 @@ int interpret(NodeAST *node) {
       char *string = malloc(nbytes + 1);
       memcpy(string, data_mem + currData[5], nbytes);
       string[nbytes] = '\0';
-      fprintf(stderr, "<write(1, 0x%04lx, %zu)", data, nbytes);
+
+      if (DEBUG)
+        fprintf(stderr, "<write(1, 0x%04lx, %zu)", data, nbytes);
+
       fprintf(stdout, "%s", string);
-      fprintf(stderr, " => %d>\n", ret);
+
+      if (DEBUG)
+        fprintf(stderr, " => %d>\n", ret);
       free(string);
 
       regs[AX] = 0;
@@ -385,7 +392,8 @@ int interpret(NodeAST *node) {
 
     case 17: // BRK
       addr = *(uint16_t *)(data_mem + regs[BX] + 10);
-      fprintf(stderr, "<brk(0x%04x) => 0>\n", addr);
+      if (DEBUG)
+        fprintf(stderr, "<brk(0x%04x) => 0>\n", addr);
 
       ret = 0;
       regs[AX] = 0;
@@ -397,7 +405,9 @@ int interpret(NodeAST *node) {
       ret = 0xffea; // 0x10000 - EINVAL;
       req = *(uint16_t *)(data_mem + regs[BX] + 8);
       addr = *(uint16_t *)(data_mem + regs[BX] + 18);
-      fprintf(stderr, "<ioctl(1, 0x%04x, 0x%04x)>\n", req, addr);
+
+      if (DEBUG)
+        fprintf(stderr, "<ioctl(1, 0x%04x, 0x%04x)>\n", req, addr);
 
       regs[AX] = 0;
       memcpy(data_mem + regs[BX] + 2, &ret, 2);

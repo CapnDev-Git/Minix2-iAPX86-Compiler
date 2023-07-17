@@ -14,8 +14,12 @@ const char *REG8[R8_SIZE] = {"al", "cl", "dl", "bl", "ah", "ch", "dh", "bh"};
 const char *REG16[R16_SIZE] = {"ax", "cx", "dx", "bx", "sp", "bp", "si", "di"};
 const char *SEGREG[SR_SIZE] = {"es", "cs", "ss", "ds"};
 
-// INTERPRETER
+// GLOBAL FLAGS
+int DISASSEMBLE = 0;
+int DEBUG = 0;
 int INTERPRET = 0;
+
+// INTERPRETER
 char INTPTR[MEMORY_SIZE][256] = {0};
 size_t INTPTR_MAX_INDEX = 0;
 
