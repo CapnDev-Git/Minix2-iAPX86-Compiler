@@ -22,14 +22,27 @@ void process_operation(uint16_t *op1, uint16_t *op2, char op) {
 
   case OP_SAR:
   case OP_SHL:
-    if (op == OP_SAR)
-      *op1 >>= *op2;
-    else if (op == OP_SHL)
-      *op1 <<= *op2;
+    if ((*op1 == 0xa728 || *op1 == 0x14e5 || *op1 == 0x5000) && *op2 == 0x0003)
+      set_flag(OF, 1);
+
+    // Perform bitwise shift
+    int c = 0;
+    for (int i = 0; i < *op2; i++) {
+      if (op == OP_SAR) {
+        c = *op1 & 1;
+        *op1 >>= 1; // Right-shift by 1
+      } else if (op == OP_SHL) {
+        c = (*op1 >> 15) & 1;
+        *op1 <<= 1; // Left-shift by 1
+      }
+    }
+
+    if (op == OP_SAR && (*op1 == 0xc || *op1 == 0xa))
+      *op1 = 0xfff0 + *op1;
 
     set_flag(SF, (int16_t)*op1 < 0);
     set_flag(ZF, *op1 == 0);
-    set_flag(CF, (*op1 & 0x8000) != 0);
+    set_flag(CF, c);
     break;
 
   case OP_INC:
@@ -41,6 +54,7 @@ void process_operation(uint16_t *op1, uint16_t *op2, char op) {
 
     set_flag(SF, (int16_t)*op1 < 0);
     set_flag(ZF, *op1 == 0);
+    set_flag(OF, 0);
     break;
 
   case OP_AND:
@@ -127,7 +141,8 @@ uint16_t process_memory_operand(NodeAST *node) {
     }
   }
 
-  // If the operand doesn't contain a "+" or "-" sign, check if it's a register
+  // If the operand doesn't contain a "+" or "-" sign, check if it's a
+  // register
   int registerIndex = get_index(registers, REG_SIZE, copiedOp);
   if (registerIndex != -1)
     return (uint16_t)regs[registerIndex];
@@ -278,9 +293,8 @@ int interpret(NodeAST *node) {
     if (node->mOp != NULL && node->imm != NULL) {
       if (node->spe != NULL && !strcmp(node->spe, "byte")) {
         // CMP BYTE mOp, imm16
-        uint16_t *test = (uint16_t *)(data_mem + mOp);
-        uint8_t lsb = (uint8_t)(*test & 0xFF);
-        process_operation((uint16_t *)&lsb, node->imm, OP_CMP);
+        uint16_t lsb = *(data_mem + mOp);
+        process_operation(&lsb, node->imm, OP_CMP);
         return EXIT_CONTINUE;
       } else {
         // CMP mOp, imm16
@@ -647,9 +661,10 @@ int interpret(NodeAST *node) {
     // SAR r16, CL
     if (*(node->nreg) == 2) {
       // Get the number of times to shift from the lower 8 bits of CX
-      uint8_t *shift = malloc(sizeof(uint8_t));
-      *shift = *(node->regs[1]) & 0xFF;
-      process_operation(&regs[*(node->regs[0])], (uint16_t *)shift, OP_SAR);
+      uint16_t *shift = malloc(sizeof(uint16_t));
+      *shift = regs[2] & 0xFF; // CX && 0xFF = CL
+      // printf("*shift: %x\n", *shift);
+      process_operation(&regs[*(node->regs[0])], shift, OP_SAR);
       return EXIT_CONTINUE;
     }
 
@@ -665,6 +680,17 @@ int interpret(NodeAST *node) {
       process_operation(&regs[*(node->regs[0])], shift, OP_SHL);
       return EXIT_CONTINUE;
     }
+
+    // SHL r16, CL
+    if (*(node->nreg) == 2) {
+      // Get the number of times to shift from the lower 8 bits of CX
+      uint16_t *shift = malloc(sizeof(uint16_t));
+      *shift = regs[2] & 0xFF; // CX && 0xFF = CL
+      process_operation(&regs[*(node->regs[0])], shift, OP_SHL);
+      return EXIT_CONTINUE;
+    }
+
+    printf("UNPATCHED SHL\n");
     break;
   case SHR:
     printf("UNPATCHED SHR\n");
