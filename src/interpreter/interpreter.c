@@ -380,11 +380,10 @@ int interpret(NodeAST *node) {
       if (DEBUG)
         fprintf(stderr, "<write(1, 0x%04lx, %zu)", data, nbytes);
 
-      fprintf(stdout, "%s", string);
+      printf("%s", string);
 
       if (DEBUG)
         fprintf(stderr, " => %d>\n", ret);
-      free(string);
 
       regs[AX] = 0;
       memcpy(data_mem + regs[BX] + 2, &ret, 2);

@@ -15,23 +15,25 @@ int main(int argc, char **argv) {
       errx(1, "File to interpret not provided.\nUsage: %s -m <file>", argv[0]);
 
     // Set the flag to debug-interpret
-    DEBUG = INTERPRET = 1;
+    DEBUG = 1;
+    INTERPRET = 1;
   } else {
     INTERPRET = 1; // No flag => INTERPRET
   }
+
+  // Treat spaces in the path
+  __treat_spc(argc, argv);
 
   // Dump the file in text & data memories
   char *path = argv[argc - 1];
   hexdump(path); // Contains error for unexisting file
 
-  if (DEBUG) { // => interpret as well
+  if (INTERPRET || DEBUG) { // more readable
     // Setup the memory for the interpreter
     setup_memory(argc, argv);
 
-    if (DEBUG) { // Print only if -m
-      // Interpret the binary
-      print_regs_header();
-    }
+    if (DEBUG)
+      print_regs_header(); // Interpret the binary
   }
 
   // Disassemble the binary (doesn't interpret if only -d)

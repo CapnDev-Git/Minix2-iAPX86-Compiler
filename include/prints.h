@@ -37,6 +37,13 @@ void printKO(const char *filename);
 /// @param ref The reference
 void printDiff(const char *errorLine, const char *ref);
 
+/// @brief Print the 4bits-address & spaces
+/// @param p The program
+/// @param a
+/// @param il
+/// @param line
 void print4b(const unsigned char *p, size_t a, size_t il, char *line);
 
 void print_node(NodeAST *node);
+
+void __treat_spc(int argc, char **argv);

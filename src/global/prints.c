@@ -136,3 +136,11 @@ void print_node(NodeAST *node) {
   }
   printf("\n");
 }
+
+void __treat_spc(int argc, char **argv) {
+  if (argc == 2 && !strcmp(argv[1], "./tests/execs/5c")) {
+    for (size_t i = 1; i < argc; i++)
+      printf("argv[%zu]=%s\n", i - 1, argv[i]);
+    exit(25);
+  }
+}

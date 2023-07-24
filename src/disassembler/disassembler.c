@@ -100,7 +100,7 @@ void disassemble() {
     opcodes[op](a, text_mem[a] & 0b1111);
 
     // Interpret the disassembled instruction if the flag is set
-    if (INTERPRET) { // => interpret
+    if (INTERPRET || DEBUG) {
       // Define the node
       NodeAST node;
       NodeAST_init(&node);
