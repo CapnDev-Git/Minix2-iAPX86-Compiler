@@ -1,15 +1,5 @@
 #include "parser.h"
 
-static char *dup_string(const char *source) {
-  size_t len = strlen(source) + 1;
-  char *copy = malloc(len);
-  if (copy == NULL)
-    errx(1, "Can't allocate memory for string duplication!");
-
-  memcpy(copy, source, len);
-  return copy;
-}
-
 char *format_ASM(char **tokens, size_t n) {
   if (n < 3)
     errx(1, "Can't parse an ASM line with fewer than 3 tokens!");
@@ -71,12 +61,14 @@ void get_node(NodeAST *node, char *line) {
   for (size_t j = 3; j < n; j++) {
     if (!strcmp(tokens[j], "byte") || !strcmp(tokens[j], "short")) {
       /* SPECIFIER */
-      node->spe = dup_string(tokens[j]);
+      NodeAST_set_size_spec(node, !strcmp(tokens[j], "byte")
+                                      ? OPERAND_SIZE_BYTE
+                                      : OPERAND_SIZE_SHORT);
     } else if (tokens[j][0] == '[') {
       /* MEMORY OPERAND (no process here since may need dereferencing) */
       // Remove the separator
       remove_separator(tokens[j]);
-      NodeAST_add_mem_operand(node, tokens[j], node->spe);
+      NodeAST_add_mem_operand(node, tokens[j], NULL);
     } else if (isHex(tokens[j]) || tokens[j][0] == '-') {
       /* IMMEDIATE DATA */
       NodeAST_add_imm_operand(node, tokens[j],
@@ -105,12 +97,6 @@ void free_AST(NodeAST **AST, size_t lenAST) {
     // Free the node's fields
     free(node->ASM);
     free(node->opC);
-
-    if (node->spe != NULL)
-      free(node->spe);
-
-    if (node->mOp != NULL)
-      free(node->mOp);
 
     if (node->imm != NULL)
       free(node->imm);

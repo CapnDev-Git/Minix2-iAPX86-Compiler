@@ -184,7 +184,7 @@ static OperandSize parse_operand_size_spec(const char *specifier) {
 }
 
 static int is_register_token(const char *token) {
-  return get_index(registers, ALL_REG_SIZE, token) != -1;
+  return get_index(registers, ALL_REG_SIZE, token) != (size_t)-1;
 }
 
 static void parse_memory_operand(NodeAST *node, const char *operand) {

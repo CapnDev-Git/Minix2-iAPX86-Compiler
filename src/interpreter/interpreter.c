@@ -120,54 +120,14 @@ size_t get_syscall_return(uint16_t type) {
 }
 
 uint16_t process_memory_operand(NodeAST *node) {
-  // Copy the memory operand to a new string
-  char *copiedOp = dup_string(node->mOp);
-  size_t len = strlen(copiedOp);
+  if (node->memKind == MEMORY_KIND_DIRECT)
+    return node->memDirect;
 
-  if (len < 2) {
-    free(copiedOp);
-    return 0;
-  }
+  uint16_t address = (uint16_t)node->memDisp;
+  for (size_t i = 0; i < node->memRegCount; i++)
+    address += regs[node->memRegs[i]];
 
-  char *operand = copiedOp;
-  if (copiedOp[0] == '[' && copiedOp[len - 1] == ']') {
-    copiedOp[len - 1] = '\0';
-    operand = copiedOp + 1;
-  }
-
-  // Check if the memory operand contains a "+" or "-" sign
-  char *opstr = strchr(operand, '+');
-  if (!opstr)
-    opstr = strchr(operand, '-');
-
-  // If it does, sum or subtract the number from the register value
-  if (opstr) {
-    // Split the operand
-    char opsym = *opstr;
-    *opstr = '\0';
-    const char *rname = operand;
-    const char *nstr = opstr + 1;
-    int n = strtol(nstr, NULL, 16);
-
-    // Check if the register name is valid
-    int registerIndex = get_index(registers, REG_SIZE, rname);
-    if (registerIndex != -1) {
-      // Handle the addition or subtraction based on the sign
-      if (opsym == '+')
-        return (uint16_t)(regs[registerIndex] + n);
-      else if (opsym == '-')
-        return (uint16_t)(regs[registerIndex] - n);
-    }
-  }
-
-  // If the operand doesn't contain a "+" or "-" sign, check if it's a
-  // register
-  int registerIndex = get_index(registers, REG_SIZE, operand);
-  if (registerIndex != -1)
-    return (uint16_t)regs[registerIndex];
-
-  // Otherwise, directly return the value of the memory address
-  return (uint16_t)strtol(operand, NULL, 16);
+  return address;
 }
 
 char *get_memory_content(unsigned char *data, size_t addr, int r8) {
@@ -199,11 +159,11 @@ int interpret(NodeAST *node) {
   // Get the memory content of the eventual memory operand
   uint16_t mOp = 0;
   char *memory_content = NULL;
-  if (node->mOp != NULL) {
+  if (node->memKind != MEMORY_KIND_NONE) {
     mOp = process_memory_operand(node);
 
     int r8_given = *(node->nreg) == 1 && *(node->regs[0]) > 7;
-    int r8_spec = node->spe != NULL && !strcmp(node->spe, "byte");
+    int r8_spec = node->sizeSpec == OPERAND_SIZE_BYTE;
     memory_content = get_memory_content(data_mem, mOp, r8_given || r8_spec);
   }
 
@@ -232,7 +192,7 @@ int interpret(NodeAST *node) {
     }
 
     // ADD r16, mOp
-    if (*(node->nreg) == 1 && node->mOp != NULL) {
+    if (*(node->nreg) == 1 && node->memKind != MEMORY_KIND_NONE) {
       if (op1Kind == OPERAND_MEM) {
         process_operation((uint16_t *)(data_mem + mOp), &regs[*(node->regs[0])],
                           OP_PLUS);
@@ -245,14 +205,14 @@ int interpret(NodeAST *node) {
     }
 
     // ADD mOp, imm16
-    if (node->mOp != NULL && node->imm != NULL) {
+    if (node->memKind != MEMORY_KIND_NONE && node->imm != NULL) {
       process_operation((uint16_t *)(data_mem + mOp), node->imm, OP_PLUS);
       return EXIT_CONTINUE;
     }
     break;
   case AND:
     // AND mOp, imm16
-    if (node->mOp != NULL && node->imm != NULL) {
+    if (node->memKind != MEMORY_KIND_NONE && node->imm != NULL) {
       process_operation((uint16_t *)(data_mem + mOp), node->imm, OP_AND);
       return EXIT_CONTINUE;
     }
@@ -264,7 +224,7 @@ int interpret(NodeAST *node) {
     }
 
     // AND r16, mOp
-    if (*(node->nreg) == 1 && node->mOp != NULL) {
+    if (*(node->nreg) == 1 && node->memKind != MEMORY_KIND_NONE) {
       process_operation(&regs[*(node->regs[0])], (uint16_t *)(data_mem + mOp),
                         OP_AND);
       return EXIT_CONTINUE;
@@ -296,8 +256,8 @@ int interpret(NodeAST *node) {
       return EXIT_CONTINUE;
     }
 
-    if (node->mOp != NULL && node->imm != NULL) {
-      if (node->spe != NULL && !strcmp(node->spe, "byte")) {
+    if (node->memKind != MEMORY_KIND_NONE && node->imm != NULL) {
+      if (node->sizeSpec == OPERAND_SIZE_BYTE) {
         // CMP BYTE mOp, imm16
         uint16_t lsb = *(data_mem + mOp);
         process_operation(&lsb, node->imm, OP_CMP);
@@ -309,7 +269,7 @@ int interpret(NodeAST *node) {
       }
     }
 
-    if (node->mOp != NULL && *(node->nreg) == 1) {
+    if (node->memKind != MEMORY_KIND_NONE && *(node->nreg) == 1) {
       if (op1Kind == OPERAND_MEM) {
         // CMP mOp, r16
         process_operation((uint16_t *)(data_mem + mOp), &regs[*(node->regs[0])],
@@ -343,7 +303,7 @@ int interpret(NodeAST *node) {
     }
 
     // DEC mOp
-    if (node->mOp != NULL) {
+    if (node->memKind != MEMORY_KIND_NONE) {
       process_operation((uint16_t *)(data_mem + mOp), NULL, OP_DEC);
       return EXIT_CONTINUE;
     }
@@ -364,7 +324,7 @@ int interpret(NodeAST *node) {
     break;
   case INC:
     // INC mOp
-    if (node->mOp != NULL) {
+    if (node->memKind != MEMORY_KIND_NONE) {
       process_operation((uint16_t *)(data_mem + mOp), NULL, OP_INC);
       return EXIT_CONTINUE;
     }
@@ -518,7 +478,7 @@ int interpret(NodeAST *node) {
     break;
   case LEA:
     // LEA r16, mOp
-    if (*(node->nreg) == 1 && node->mOp != NULL) {
+    if (*(node->nreg) == 1 && node->memKind != MEMORY_KIND_NONE) {
       regs[*(node->regs[0])] = mOp;
       return EXIT_CONTINUE;
     }
@@ -530,7 +490,7 @@ int interpret(NodeAST *node) {
       return EXIT_CONTINUE;
     }
 
-    if (*(node->nreg) == 1 && node->mOp != NULL) {
+    if (*(node->nreg) == 1 && node->memKind != MEMORY_KIND_NONE) {
       if (op1Kind == OPERAND_MEM) {
         if (*(node->regs[0]) < 8) {
           // MOV mOp, r16
@@ -561,7 +521,8 @@ int interpret(NodeAST *node) {
     }
 
     // MOV mOp, imm16
-    if (*(node->nreg) == 0 && node->mOp != NULL && node->imm != NULL) {
+    if (*(node->nreg) == 0 && node->memKind != MEMORY_KIND_NONE &&
+        node->imm != NULL) {
       memcpy(data_mem + mOp, node->imm, 2);
       return EXIT_CONTINUE;
     }
@@ -588,13 +549,14 @@ int interpret(NodeAST *node) {
     }
 
     // OR mOp, imm16
-    if (*(node->nreg) == 0 && node->mOp != NULL && node->imm != NULL) {
+    if (*(node->nreg) == 0 && node->memKind != MEMORY_KIND_NONE &&
+        node->imm != NULL) {
       process_operation((uint16_t *)(data_mem + mOp), node->imm, OP_OR);
       return EXIT_CONTINUE;
     }
 
     // OR r16, mOp
-    if (*(node->nreg) == 1 && node->mOp != NULL) {
+    if (*(node->nreg) == 1 && node->memKind != MEMORY_KIND_NONE) {
       process_operation(&regs[*(node->regs[0])], (uint16_t *)(data_mem + mOp),
                         OP_OR);
       return EXIT_CONTINUE;
@@ -614,7 +576,7 @@ int interpret(NodeAST *node) {
       return EXIT_CONTINUE;
     }
 
-    if (node->mOp != NULL) {
+    if (node->memKind != MEMORY_KIND_NONE) {
       // PUSH mOp
       push16_stack(*(uint16_t *)(data_mem + mOp));
       return EXIT_CONTINUE;
@@ -669,13 +631,14 @@ int interpret(NodeAST *node) {
     }
 
     // SUB mOp, imm16
-    if (*(node->nreg) == 0 && node->mOp != NULL && node->imm != NULL) {
+    if (*(node->nreg) == 0 && node->memKind != MEMORY_KIND_NONE &&
+        node->imm != NULL) {
       process_operation((uint16_t *)(data_mem + mOp), node->imm, OP_MINUS);
       return EXIT_CONTINUE;
     }
 
     // SUB r16, mOp
-    if (*(node->nreg) == 1 && node->mOp != NULL) {
+    if (*(node->nreg) == 1 && node->memKind != MEMORY_KIND_NONE) {
       // uint16_t *op1_ptr = (uint16_t *)(regs + *(node->regs[0]));
       process_operation(&regs[*(node->regs[0])], (uint16_t *)(data_mem + mOp),
                         OP_MINUS);
@@ -705,19 +668,18 @@ int interpret(NodeAST *node) {
     }
 
     // TEST mOp, imm16
-    if (*(node->nreg) == 0 && node->mOp != NULL && node->imm != NULL) {
+    if (*(node->nreg) == 0 && node->memKind != MEMORY_KIND_NONE &&
+        node->imm != NULL) {
       uint16_t *op1_ptr = (uint16_t *)(data_mem + mOp);
 
-      if (node->spe != NULL) {
-        if (!strcmp(node->spe, "byte")) {
-          uint8_t op1 = (uint8_t)(*op1_ptr);
-          process_operation((uint16_t *)&op1, node->imm, OP_TEST);
-          return EXIT_CONTINUE;
-        }
-      } else {
-        process_operation(op1_ptr, node->imm, OP_TEST);
+      if (node->sizeSpec == OPERAND_SIZE_BYTE) {
+        uint8_t op1 = (uint8_t)(*op1_ptr);
+        process_operation((uint16_t *)&op1, node->imm, OP_TEST);
         return EXIT_CONTINUE;
       }
+
+      process_operation(op1_ptr, node->imm, OP_TEST);
+      return EXIT_CONTINUE;
     }
     break;
   case XCHG:
