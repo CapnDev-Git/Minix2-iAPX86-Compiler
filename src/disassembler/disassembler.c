@@ -107,7 +107,7 @@ void disassemble() {
 
       // Parse & interpret the node
       get_node(&node, ASM[a]);
-      int ret = interpret(&node);
+      interpret(&node);
     }
 
     // Update the address to go to IP (changed by opcode function / interpreter)

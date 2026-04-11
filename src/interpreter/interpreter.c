@@ -1,6 +1,16 @@
 #include "interpreter.h"
 
-void set_flag(char f, char test) { flags[f] = test ? 1 : 0; }
+static char *dup_string(const char *source) {
+  size_t len = strlen(source) + 1;
+  char *copy = malloc(len);
+  if (copy == NULL)
+    errx(1, "Can't allocate memory for string duplication!");
+
+  memcpy(copy, source, len);
+  return copy;
+}
+
+void set_flag(size_t f, int test) { flags[f] = test ? 1 : 0; }
 
 void process_operation(uint16_t *op1, uint16_t *op2, char op) {
   uint16_t diff = 0, sum = 0;
@@ -111,22 +121,29 @@ size_t get_syscall_return(uint16_t type) {
 
 uint16_t process_memory_operand(NodeAST *node) {
   // Copy the memory operand to a new string
-  char *copiedOp = strdup(node->mOp);
+  char *copiedOp = dup_string(node->mOp);
+  size_t len = strlen(copiedOp);
+
+  if (len < 2) {
+    free(copiedOp);
+    return 0;
+  }
 
   // Remove the brackets from the memory operand
-  (++copiedOp)[strlen(copiedOp) - 1] = '\0';
+  copiedOp[len - 1] = '\0';
+  char *operand = copiedOp + 1;
 
   // Check if the memory operand contains a "+" or "-" sign
-  char *opstr = strchr(copiedOp, '+');
+  char *opstr = strchr(operand, '+');
   if (!opstr)
-    opstr = strchr(copiedOp, '-');
+    opstr = strchr(operand, '-');
 
   // If it does, sum or subtract the number from the register value
   if (opstr) {
     // Split the operand
     char opsym = *opstr;
     *opstr = '\0';
-    const char *rname = copiedOp;
+    const char *rname = operand;
     const char *nstr = opstr + 1;
     int n = strtol(nstr, NULL, 16);
 
@@ -143,12 +160,12 @@ uint16_t process_memory_operand(NodeAST *node) {
 
   // If the operand doesn't contain a "+" or "-" sign, check if it's a
   // register
-  int registerIndex = get_index(registers, REG_SIZE, copiedOp);
+  int registerIndex = get_index(registers, REG_SIZE, operand);
   if (registerIndex != -1)
     return (uint16_t)regs[registerIndex];
 
   // Otherwise, directly return the value of the memory address
-  return (uint16_t)strtol(copiedOp, NULL, 16);
+  return (uint16_t)strtol(operand, NULL, 16);
 }
 
 char *get_memory_content(unsigned char *data, size_t addr, int r8) {
@@ -167,9 +184,7 @@ char *get_memory_content(unsigned char *data, size_t addr, int r8) {
   sprintf(content + strlen(content), "%02x", data[addr]);
 
   // Create a copy of the string using strdup
-  char *copiedContent = strdup(content);
-  if (copiedContent == NULL)
-    errx(1, "Can't allocate memory for copied content!");
+  char *copiedContent = dup_string(content);
 
   // Free the original content
   free(content);
@@ -187,13 +202,13 @@ int interpret(NodeAST *node) {
 
     int r8_given = *(node->nreg) == 1 && *(node->regs[0]) > 7;
     int r8_spec = node->spe != NULL && !strcmp(node->spe, "byte");
-    memory_content =
-        strdup(get_memory_content(data_mem, mOp, r8_given || r8_spec));
+    memory_content = get_memory_content(data_mem, mOp, r8_given || r8_spec);
   }
 
   // Print the registers status
   if (DEBUG)
     print_regs_status(regs, flags, node->ASM, memory_content);
+  free(memory_content);
 
   // Interpret the instruction
   switch (get_index(instructions, INSTR_SIZE, node->opC)) {
@@ -264,6 +279,7 @@ int interpret(NodeAST *node) {
       IP = regs[*(node->regs[0])];
       return EXIT_IPCHANGED;
     }
+    /* fall through */
   case CBW:
     // CBW
     regs[AX] = (int16_t)(int8_t)(regs[AX] & 0xFF);
@@ -309,9 +325,10 @@ int interpret(NodeAST *node) {
                         OP_CMP);
       return EXIT_CONTINUE;
     }
+    /* fall through */
   case CWD:
     // CWD
-    regs[DX] = (int16_t)(regs[AX] < 0 ? 0xFFFF : 0x0000);
+    regs[DX] = (int16_t)((int16_t)regs[AX] < 0 ? 0xFFFF : 0x0000);
     return EXIT_CONTINUE;
   case DEC:
     // DEC r16
@@ -325,6 +342,7 @@ int interpret(NodeAST *node) {
       process_operation((uint16_t *)(data_mem + mOp), NULL, OP_DEC);
       return EXIT_CONTINUE;
     }
+    /* fall through */
   case DIV:
     // DIV r16
     if (*(node->nreg) == 1) {
