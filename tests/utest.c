@@ -1,4 +1,29 @@
+#define _POSIX_C_SOURCE 200809L
+
 #include "utest.h"
+
+#include <sys/stat.h>
+
+static int is_verbose_flag(const char *arg) {
+  return !strcmp(arg, "-v") || !strcmp(arg, "--verbose");
+}
+
+static int is_mode_flag(const char *arg) {
+  return !strcmp(arg, "-d") || !strcmp(arg, "-m");
+}
+
+static const char *get_reference_binary(void) {
+  const char *reference = getenv("MMVM_REF");
+  if (reference != NULL && reference[0] != '\0')
+    return reference;
+  return "mmvm";
+}
+
+static int output_indicates_missing_command(const char *output,
+                                            const char *command) {
+  return output != NULL && strstr(output, "not found") != NULL &&
+         strstr(output, command) != NULL;
+}
 
 char *get_cout(const char *command) {
   char *buffer = (char *)malloc(MAX_LENGTH * sizeof(char));
@@ -17,6 +42,7 @@ char *get_cout(const char *command) {
   char line[MAX_LENGTH];
   buffer[0] = '\0';
   char *newline;
+  size_t used = 0;
 
   while (fgets(line, sizeof(line), fp) != NULL) {
     newline = strchr(line, '\n');
@@ -24,8 +50,10 @@ char *get_cout(const char *command) {
       *newline = '\0';
     }
 
-    strncat(buffer, line, MAX_LENGTH - strlen(buffer) - 1);
-    strcat(buffer, "\n");
+    int written = snprintf(buffer + used, MAX_LENGTH - used, "%s\n", line);
+    if (written < 0 || (size_t)written >= MAX_LENGTH - used)
+      break;
+    used += (size_t)written;
   }
 
   pclose(fp);
@@ -34,43 +62,59 @@ char *get_cout(const char *command) {
 
 void cmp_files(const char *filename, int verbose, int interpret) {
   char mmvmCommand[MAX_LENGTH];
-  snprintf(mmvmCommand, sizeof(mmvmCommand), "mmvm -%s %s 2>&1",
+  const char *referenceBinary = get_reference_binary();
+  snprintf(mmvmCommand, sizeof(mmvmCommand), "%s -%s %s 2>&1", referenceBinary,
            interpret ? "m" : "d", filename);
 
   char *ref = get_cout(mmvmCommand);
   if (ref == NULL)
     errx(1, "Failed to execute command: %s\n", mmvmCommand);
 
+  if (!getenv("MMVM_REF") && output_indicates_missing_command(ref, "mmvm")) {
+    free(ref);
+    snprintf(mmvmCommand, sizeof(mmvmCommand), "./z123029_mmvm -%s %s 2>&1",
+             interpret ? "m" : "d", filename);
+    ref = get_cout(mmvmCommand);
+    if (ref == NULL)
+      errx(1, "Failed to execute command: %s\n", mmvmCommand);
+  }
+
+  char *refBase = ref;
+
   // Construct the command to capture the output of the disassembler
   char disassemblerCommand[MAX_LENGTH];
   snprintf(disassemblerCommand, sizeof(disassemblerCommand),
-           "./z123029_mmvm -%s %s %s", interpret ? "m" : "d", filename,
-           interpret ? "" : "2>&1");
+           "./z123029_mmvm -%s %s 2>&1", interpret ? "m" : "d", filename);
 
   // Capture the output of the disassembler
   char *disassemblerOutput = get_cout(disassemblerCommand);
   if (disassemblerOutput == NULL) {
-    free(ref);
+    free(refBase);
     errx(1, "Failed to execute command: %s\n", disassemblerCommand);
   }
+  char *disassemblerBase = disassemblerOutput;
 
   int match = strcmp(ref, disassemblerOutput);
   if (match == 0) {
     printOK(filename);
   } else {
-    const char *errorLine = disassemblerOutput;
-    while (*errorLine != '\0' && *errorLine == *ref) {
+    const char *errorLine = disassemblerBase;
+    const char *refLine = refBase;
+    while (*errorLine != '\0' && *errorLine == *refLine) {
       ++errorLine;
-      ++ref;
+      ++refLine;
     }
 
     if (verbose) {
       printf("\nMissmatch for file %s:", filename);
-      printDiff(errorLine, ref);
+      printDiff(errorLine, refLine, disassemblerBase, refBase);
     } else {
       printKO(filename);
     }
   }
+
+  free(refBase);
+  free(disassemblerBase);
 }
 
 void cmp_files_dir(const char *directory, int verbose, int interpret) {
@@ -82,9 +126,11 @@ void cmp_files_dir(const char *directory, int verbose, int interpret) {
 
   struct dirent *entry;
   while ((entry = readdir(dir)) != NULL) {
-    if (entry->d_type == DT_REG) { // Check if it's a regular file
-      char filepath[MAX_LENGTH];
-      snprintf(filepath, sizeof(filepath), "%s%s", directory, entry->d_name);
+    char filepath[MAX_LENGTH];
+    snprintf(filepath, sizeof(filepath), "%s/%s", directory, entry->d_name);
+
+    struct stat entryStat;
+    if (stat(filepath, &entryStat) == 0 && S_ISREG(entryStat.st_mode)) {
       cmp_files(filepath, verbose, interpret);
     }
   }
@@ -94,26 +140,33 @@ void cmp_files_dir(const char *directory, int verbose, int interpret) {
 
 int main(int argc, char **argv) {
   if (argc < 2 || argc > 4)
-    errx(1, "Usage: %s [-v|--verbose] <file|directory>\n", argv[0]);
+    errx(1, "Usage: %s [-v|--verbose] [-d|-m] <file|directory>\n", argv[0]);
 
-  if (argv[1][0] == '-' && strcmp(argv[1], "--verbose") &&
-      strcmp(argv[1], "-v") && strcmp(argv[1], "-d") && strcmp(argv[1], "-m"))
-    errx(1, "Invalid flag: %s\n", argv[1]);
+  int argi = 1;
+  int verbose = 0;
+  int interpret = 1;
 
-  if (argc == 3 && strcmp(argv[1], "--verbose") && strcmp(argv[1], "-v") &&
-      strcmp(argv[1], "-d") && strcmp(argv[1], "-m"))
-    errx(1, "Invalid flag: %s\n", argv[1]);
+  if (argi < argc && is_verbose_flag(argv[argi])) {
+    verbose = 1;
+    ++argi;
+  }
+
+  if (argi < argc && is_mode_flag(argv[argi])) {
+    interpret = strcmp(argv[argi], "-d") != 0;
+    ++argi;
+  }
+
+  if (argi != argc - 1)
+    errx(1, "Usage: %s [-v|--verbose] [-d|-m] <file|directory>\n", argv[0]);
 
   // Check if the input is a directory
-  int verbose = strcmp(argv[1], "-v");
-  int interpret = strcmp(argv[2], "-d");
-  DIR *dir = opendir(argv[argc - 1]);
+  DIR *dir = opendir(argv[argi]);
   if (dir != NULL) {
     closedir(dir);
-    cmp_files_dir(argv[argc - 1], !verbose, interpret);
+    cmp_files_dir(argv[argi], verbose, interpret);
   } else {
     // Assume the input is a single file
-    cmp_files(argv[argc - 1], !verbose, interpret);
+    cmp_files(argv[argi], verbose, interpret);
   }
 
   return 0;

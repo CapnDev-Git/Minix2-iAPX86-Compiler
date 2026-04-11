@@ -2,7 +2,7 @@
 CC = gcc
 
 # Compiler flags
-CFLAGS = -g -I$(INCDIR) #-Wall -Wextra -Werror -std=c99
+CFLAGS = -g -Wall -Wextra -Werror -std=c99 -I$(INCDIR)
 
 # Directories
 ODIR = obj

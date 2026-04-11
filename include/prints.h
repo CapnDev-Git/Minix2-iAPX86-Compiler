@@ -35,7 +35,10 @@ void printKO(const char *filename);
 /// @brief Print the diff between the error line and the reference
 /// @param errorLine The error line
 /// @param ref The reference
-void printDiff(const char *errorLine, const char *ref);
+/// @param errorBase The start of the error buffer
+/// @param refBase The start of the reference buffer
+void printDiff(const char *errorLine, const char *ref, const char *errorBase,
+               const char *refBase);
 
 /// @brief Print the 4bits-address & spaces
 /// @param p The program
