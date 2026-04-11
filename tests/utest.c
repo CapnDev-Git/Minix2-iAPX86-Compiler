@@ -25,6 +25,14 @@ static int output_indicates_missing_command(const char *output,
          strstr(output, command) != NULL;
 }
 
+static char *capture_command_output(const char *command) {
+  char *output = get_cout(command);
+  if (output == NULL)
+    errx(1, "Failed to execute command: %s\n", command);
+
+  return output;
+}
+
 char *get_cout(const char *command) {
   char *buffer = (char *)malloc(MAX_LENGTH * sizeof(char));
   if (buffer == NULL) {
@@ -66,17 +74,13 @@ void cmp_files(const char *filename, int verbose, int interpret) {
   snprintf(mmvmCommand, sizeof(mmvmCommand), "%s -%s %s 2>&1", referenceBinary,
            interpret ? "m" : "d", filename);
 
-  char *ref = get_cout(mmvmCommand);
-  if (ref == NULL)
-    errx(1, "Failed to execute command: %s\n", mmvmCommand);
+  char *ref = capture_command_output(mmvmCommand);
 
   if (!getenv("MMVM_REF") && output_indicates_missing_command(ref, "mmvm")) {
     free(ref);
     snprintf(mmvmCommand, sizeof(mmvmCommand), "./z123029_mmvm -%s %s 2>&1",
              interpret ? "m" : "d", filename);
-    ref = get_cout(mmvmCommand);
-    if (ref == NULL)
-      errx(1, "Failed to execute command: %s\n", mmvmCommand);
+    ref = capture_command_output(mmvmCommand);
   }
 
   char *refBase = ref;
@@ -87,11 +91,7 @@ void cmp_files(const char *filename, int verbose, int interpret) {
            "./z123029_mmvm -%s %s 2>&1", interpret ? "m" : "d", filename);
 
   // Capture the output of the disassembler
-  char *disassemblerOutput = get_cout(disassemblerCommand);
-  if (disassemblerOutput == NULL) {
-    free(refBase);
-    errx(1, "Failed to execute command: %s\n", disassemblerCommand);
-  }
+  char *disassemblerOutput = capture_command_output(disassemblerCommand);
   char *disassemblerBase = disassemblerOutput;
 
   int match = strcmp(ref, disassemblerOutput);

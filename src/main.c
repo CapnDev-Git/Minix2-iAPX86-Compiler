@@ -17,7 +17,7 @@ int main(int argc, char **argv) {
     DISASSEMBLE = 1;
   } else if (!strcmp(argv[1], "-m")) {
     // Exit of no file to interpret provided
-    if (argc == 2)
+    if (argc < 3)
       errx(1, "File to interpret not provided.\nUsage: %s -m <file>", argv[0]);
 
     // Set the flag to debug-interpret
