@@ -33,10 +33,7 @@ void printsw(size_t a, char *instr, char *ea, unsigned char LSB4, size_t *ds) {
             imm8 < 0 ? -imm8 : imm8);
     break;
   }
-
-  // Add the line to the lsit of ASM ligns
-  strncpy(ASM[a], line, sizeof(ASM[a]));
-  ASM_MAX_INDEX = a;
+  store_asm_line(a, line);
 }
 
 void printvw(size_t a, char *instr, unsigned char LSB4, size_t *ds) {
@@ -75,10 +72,7 @@ void printvw(size_t a, char *instr, unsigned char LSB4, size_t *ds) {
         sprintf(line + strlen(line), "%s %s, cl", instr, ea);
     }
   }
-
-  // Add the line to the lsit of ASM ligns
-  strncpy(ASM[a], line, sizeof(ASM[a]));
-  ASM_MAX_INDEX = a;
+  store_asm_line(a, line);
   free(ea);
 }
 
@@ -100,10 +94,7 @@ void printdw(size_t a, char *instr, unsigned char LSB4, size_t *ds) {
             : (mod == 3 ? (w ? REG16[rm] : REG8[rm]) : ea),
           d ? (mod == 3 ? (w ? REG16[rm] : REG8[rm]) : ea)
             : (w ? REG16[reg] : REG8[reg]));
-
-  // Add the line to the lsit of ASM ligns
-  strncpy(ASM[a], line, sizeof(ASM[a]));
-  ASM_MAX_INDEX = a;
+  store_asm_line(a, line);
   free(ea);
 }
 
@@ -117,10 +108,7 @@ void print_immtoacc(size_t a, char *instr, unsigned char w) {
   } else {
     sprintf(line + strlen(line), "%s al, %x", instr, text_mem[a + 1]);
   }
-
-  // Add the line to the lsit of ASM ligns
-  strncpy(ASM[a], line, sizeof(ASM[a]));
-  ASM_MAX_INDEX = a;
+  store_asm_line(a, line);
 }
 
 void print_immtorm(size_t a, char *instr, char *ea, unsigned char LSB4,
@@ -138,10 +126,7 @@ void print_immtorm(size_t a, char *instr, char *ea, unsigned char LSB4,
   else
     sprintf(line + strlen(line), "%s %s, %02x", instr, mod == 3 ? REG8[rm] : ea,
             *(uint8_t *)&text_mem[a + 2]);
-
-  // Add the line to the lsit of ASM ligns
-  strncpy(ASM[a], line, sizeof(ASM[a]));
-  ASM_MAX_INDEX = a;
+  store_asm_line(a, line);
 }
 
 void print_rmtoimm(size_t a, char *instr, char *ea, unsigned char LSB4,
@@ -170,10 +155,7 @@ void print_rmtoimm(size_t a, char *instr, char *ea, unsigned char LSB4,
               *(uint8_t *)&text_mem[a + 2]);
     }
   }
-
-  // Add the line to the lsit of ASM ligns
-  strncpy(ASM[a], line, sizeof(ASM[a]));
-  ASM_MAX_INDEX = a;
+  store_asm_line(a, line);
 }
 
 void print_rm16(size_t a, char *instr, unsigned char rm) {
@@ -181,10 +163,7 @@ void print_rm16(size_t a, char *instr, unsigned char rm) {
   print4b(text_mem, a, 1, line);
 
   sprintf(line + strlen(line), "%s %s", instr, REG16[rm]);
-
-  // Add the line to the lsit of ASM ligns
-  strncpy(ASM[a], line, sizeof(ASM[a]));
-  ASM_MAX_INDEX = a;
+  store_asm_line(a, line);
 }
 
 void print_condjmps(size_t a, char *instr) {
@@ -192,30 +171,21 @@ void print_condjmps(size_t a, char *instr) {
   print4b(text_mem, a, 2, line);
   sprintf(line + strlen(line), "%s %04x", instr,
           IP + (signed char)text_mem[a + 1]);
-
-  // Add the line to the lsit of ASM ligns
-  strncpy(ASM[a], line, sizeof(ASM[a]));
-  ASM_MAX_INDEX = a;
+  store_asm_line(a, line);
 }
 
 void print_repmanip(size_t a, char *instr, unsigned char w) {
   char line[256]; // Buffer to store the formatted string
   print4b(text_mem, a, 2, line);
   sprintf(line + strlen(line), "rep %s%c", instr, w ? 'w' : 'b');
-
-  // Add the line to the lsit of ASM ligns
-  strncpy(ASM[a], line, sizeof(ASM[a]));
-  ASM_MAX_INDEX = a;
+  store_asm_line(a, line);
 }
 
 void print_single(size_t a, char *instr, size_t il) {
   char line[256]; // Buffer to store the formatted string
   print4b(text_mem, a, il, line);
   sprintf(line + strlen(line), "%s", instr);
-
-  // Add the line to the lsit of ASM ligns
-  strncpy(ASM[a], line, sizeof(ASM[a]));
-  ASM_MAX_INDEX = a;
+  store_asm_line(a, line);
 }
 
 void print_portfixed(size_t a, char *instr, unsigned char w) {
@@ -223,20 +193,14 @@ void print_portfixed(size_t a, char *instr, unsigned char w) {
   print4b(text_mem, a, 2, line);
   sprintf(line + strlen(line), "%s %s, %x", instr, w ? "ax" : "al",
           text_mem[a + 1]);
-
-  // Add the line to the lsit of ASM ligns
-  strncpy(ASM[a], line, sizeof(ASM[a]));
-  ASM_MAX_INDEX = a;
+  store_asm_line(a, line);
 }
 
 void print_portvar(size_t a, char *instr, unsigned char w) {
   char line[256]; // Buffer to store the formatted string
   print4b(text_mem, a, 1, line);
   sprintf(line + strlen(line), "%s %s, dx", instr, w ? "ax" : "al");
-
-  // Add the line to the lsit of ASM ligns
-  strncpy(ASM[a], line, sizeof(ASM[a]));
-  ASM_MAX_INDEX = a;
+  store_asm_line(a, line);
 }
 
 void print_loop(size_t a, char *instr) {
@@ -244,10 +208,7 @@ void print_loop(size_t a, char *instr) {
   print4b(text_mem, a, 2, line);
   sprintf(line + strlen(line), "%s %04x", instr,
           IP + *(int8_t *)&text_mem[a + 1]);
-
-  // Add the line to the lsit of ASM ligns
-  strncpy(ASM[a], line, sizeof(ASM[a]));
-  ASM_MAX_INDEX = a;
+  store_asm_line(a, line);
 }
 
 void print_calljmp(size_t a, char *instr) {
@@ -255,20 +216,14 @@ void print_calljmp(size_t a, char *instr) {
   print4b(text_mem, a, 3, line);
   sprintf(line + strlen(line), "%s %04x", instr,
           IP + *(int16_t *)&text_mem[a + 1]);
-
-  // Add the line to the lsit of ASM ligns
-  strncpy(ASM[a], line, sizeof(ASM[a]));
-  ASM_MAX_INDEX = a;
+  store_asm_line(a, line);
 }
 
 void print_stringmanip(size_t a, char *instr, unsigned char w) {
   char line[256]; // Buffer to store the formatted string
   print4b(text_mem, a, 1, line);
   sprintf(line + strlen(line), "%s%c", instr, w ? 'w' : 'b');
-
-  // Add the line to the lsit of ASM ligns
-  strncpy(ASM[a], line, sizeof(ASM[a]));
-  ASM_MAX_INDEX = a;
+  store_asm_line(a, line);
 }
 
 void print_fw(size_t a, char *instr, char *ea, unsigned char LSB4, size_t *ds) {
@@ -289,10 +244,7 @@ void print_fw(size_t a, char *instr, char *ea, unsigned char LSB4, size_t *ds) {
     else
       sprintf(line + strlen(line), "%s %s", instr, ea);
   }
-
-  // Add the line to the lsit of ASM ligns
-  strncpy(ASM[a], line, sizeof(ASM[a]));
-  ASM_MAX_INDEX = a;
+  store_asm_line(a, line);
 }
 
 void print_frm(size_t a, char *instr, char *ea, size_t *ds) {
@@ -303,8 +255,5 @@ void print_frm(size_t a, char *instr, char *ea, size_t *ds) {
   print4b(text_mem, a, 2 + *ds, line);
 
   sprintf(line + strlen(line), "%s %s", instr, mod == 3 ? REG16[rm] : ea);
-
-  // Add the line to the lsit of ASM ligns
-  strncpy(ASM[a], line, sizeof(ASM[a]));
-  ASM_MAX_INDEX = a;
+  store_asm_line(a, line);
 }

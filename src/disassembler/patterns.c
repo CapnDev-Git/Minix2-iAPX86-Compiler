@@ -91,10 +91,7 @@ void f0x2(size_t a, unsigned char LSB4) {
         sprintf(line + strlen(line), "sub ax, %04x",
                 *(uint16_t *)(text_mem + a + 1));
       }
-
-      // Add the line to the lsit of ASM ligns
-      strncpy(ASM[a], line, sizeof(ASM[a]));
-      ASM_MAX_INDEX = a;
+  store_asm_line(a, line);
       break;
     }
 
@@ -260,10 +257,7 @@ void f0x8(size_t a, unsigned char LSB4) {
     get_adm(a + 2, mod, rm, ea, &ds);
     print4b(text_mem, a, 2 + ds, line);
     sprintf(line + strlen(line), "lea %s, %s", REG16[reg], ea);
-
-    // Add the line to the lsit of ASM ligns
-    strncpy(ASM[a], line, sizeof(ASM[a]));
-    ASM_MAX_INDEX = a;
+  store_asm_line(a, line);
 
     break;
 
@@ -273,10 +267,7 @@ void f0x8(size_t a, unsigned char LSB4) {
     IP += 2;
     sprintf(line + strlen(line),
             "0x8f is not implemented"); // should be POP r/m
-
-    // Add the line to the lsit of ASM ligns
-    strncpy(ASM[a], line, sizeof(ASM[a]));
-    ASM_MAX_INDEX = a;
+  store_asm_line(a, line);
 
     break;
 
@@ -350,10 +341,7 @@ void f0x8(size_t a, unsigned char LSB4) {
           else
             sprintf(line + strlen(line), "xchg %s, %s", ea, REG16[reg]);
         }
-
-        // Add the line to the lsit of ASM ligns
-        strncpy(ASM[a], line, sizeof(ASM[a]));
-        ASM_MAX_INDEX = a;
+  store_asm_line(a, line);
       }
       break;
 
@@ -376,10 +364,7 @@ void f0x8(size_t a, unsigned char LSB4) {
           sprintf(line + strlen(line), "mov %s, %s", REG16[rm], SEGREG[reg]);
         else
           sprintf(line + strlen(line), "mov %s, %s", ea, SEGREG[reg]);
-
-        // Add the line to the lsit of ASM ligns
-        strncpy(ASM[a], line, sizeof(ASM[a]));
-        ASM_MAX_INDEX = a;
+  store_asm_line(a, line);
         break;
 
       case 0b10:
@@ -388,10 +373,7 @@ void f0x8(size_t a, unsigned char LSB4) {
           sprintf(line + strlen(line), "mov %s, %s", SEGREG[reg], REG16[rm]);
         else
           sprintf(line + strlen(line), "mov %s, %s", SEGREG[reg], ea);
-
-        // Add the line to the lsit of ASM ligns
-        strncpy(ASM[a], line, sizeof(ASM[a]));
-        ASM_MAX_INDEX = a;
+  store_asm_line(a, line);
         break;
       }
       break;
@@ -452,10 +434,7 @@ void f0x9(size_t a, unsigned char LSB4) {
     // XCHG: reg + acc.
     print4b(text_mem, a, 1, line);
     sprintf(line + strlen(line), "xchg %s, ax", REG16[LSB4 & 0b111]);
-
-    // Add the line to the lsit of ASM ligns
-    strncpy(ASM[a], line, sizeof(ASM[a]));
-    ASM_MAX_INDEX = a;
+  store_asm_line(a, line);
   }
 
   free(ea);
@@ -473,10 +452,7 @@ void f0xa(size_t a, unsigned char LSB4) {
 
     sprintf(line + strlen(line), "mov %s, [%04x]", w ? "ax" : "al",
             *(uint16_t *)&text_mem[a + 1]);
-
-    // Add the line to the lsit of ASM ligns
-    strncpy(ASM[a], line, sizeof(ASM[a]));
-    ASM_MAX_INDEX = a;
+  store_asm_line(a, line);
 
     break;
 
@@ -485,10 +461,7 @@ void f0xa(size_t a, unsigned char LSB4) {
     print4b(text_mem, a, 3, line);
     sprintf(line + strlen(line), "mov [%04x], %s",
             *(uint16_t *)&text_mem[a + 1], w ? "ax" : "al");
-
-    // Add the line to the lsit of ASM ligns
-    strncpy(ASM[a], line, sizeof(ASM[a]));
-    ASM_MAX_INDEX = a;
+  store_asm_line(a, line);
 
     break;
 
@@ -542,10 +515,7 @@ void f0xb(size_t a, unsigned char LSB4) {
     sprintf(line + strlen(line), "mov %s, %04x", REG16[reg],
             *(uint16_t *)&text_mem[a + 1]);
   }
-
-  // Add the line to the lsit of ASM ligns
-  strncpy(ASM[a], line, sizeof(ASM[a]));
-  ASM_MAX_INDEX = a;
+  store_asm_line(a, line);
   free(ea);
 }
 
@@ -581,10 +551,7 @@ void f0xc(size_t a, unsigned char LSB4) {
                 text_mem[a + 2 + ds]);
       }
     }
-
-    // Add the line to the lsit of ASM ligns
-    strncpy(ASM[a], line, sizeof(ASM[a]));
-    ASM_MAX_INDEX = a;
+  store_asm_line(a, line);
 
     break;
 
@@ -594,10 +561,7 @@ void f0xc(size_t a, unsigned char LSB4) {
       // RET: winseg + immed -> SP
       print4b(text_mem, a, 3, line);
       sprintf(line + strlen(line), "ret %04x", *(uint16_t *)&text_mem[a + 1]);
-
-      // Add the line to the lsit of ASM ligns
-      strncpy(ASM[a], line, sizeof(ASM[a]));
-      ASM_MAX_INDEX = a;
+  store_asm_line(a, line);
 
       break;
 
@@ -615,10 +579,7 @@ void f0xc(size_t a, unsigned char LSB4) {
 
       print4b(text_mem, a, 2 + ds, line);
       sprintf(line + strlen(line), "lds %s, %s", REG16[reg], ea);
-
-      // Add the line to the lsit of ASM ligns
-      strncpy(ASM[a], line, sizeof(ASM[a]));
-      ASM_MAX_INDEX = a;
+  store_asm_line(a, line);
 
       break;
 
@@ -631,10 +592,7 @@ void f0xc(size_t a, unsigned char LSB4) {
 
       print4b(text_mem, a, 2 + ds, line);
       sprintf(line + strlen(line), "les %s, %s", REG16[reg], ea);
-
-      // Add the line to the lsit of ASM ligns
-      strncpy(ASM[a], line, sizeof(ASM[a]));
-      ASM_MAX_INDEX = a;
+  store_asm_line(a, line);
 
       break;
 
@@ -657,10 +615,7 @@ void f0xc(size_t a, unsigned char LSB4) {
         // INT: spec
         print4b(text_mem, a, 2, line);
         sprintf(line + strlen(line), "int %x", text_mem[a + 1]);
-
-        // Add the line to the lsit of ASM ligns
-        strncpy(ASM[a], line, sizeof(ASM[a]));
-        ASM_MAX_INDEX = a;
+  store_asm_line(a, line);
 
       } else {
         // INT: unspec, type = 3
@@ -888,10 +843,7 @@ void f0xf(size_t a, unsigned char LSB4) {
           sprintf(line + strlen(line), "test %s, %04x", ea,
                   *(uint16_t *)&text_mem[a + 2 + ds]);
       }
-
-      // Add the line to the lsit of ASM ligns
-      strncpy(ASM[a], line, sizeof(ASM[a]));
-      ASM_MAX_INDEX = a;
+  store_asm_line(a, line);
 
       break;
 
