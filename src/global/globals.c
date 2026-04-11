@@ -95,8 +95,13 @@ void NodeAST_init(NodeAST *node) {
   node->opLen = 0;
 
   // Initialize the other fields
-  node->spe = NULL;
-  node->mOp = NULL;
+  node->sizeSpec = OPERAND_SIZE_NONE;
+  node->memKind = MEMORY_KIND_NONE;
+  node->memRegCount = 0;
+  node->memRegs[0] = 0;
+  node->memRegs[1] = 0;
+  node->memDisp = 0;
+  node->memDirect = 0;
   node->imm = NULL;
   node->operandCount = 0;
   node->operandKinds[0] = OPERAND_NONE;
@@ -117,8 +122,6 @@ void NodeAST_init(NodeAST *node) {
 void NodeAST_free(NodeAST *node) {
   free(node->ASM);
   free(node->opC);
-  free(node->spe);
-  free(node->mOp);
   free(node->imm);
 
   if (node->regs != NULL) {
@@ -130,8 +133,13 @@ void NodeAST_free(NodeAST *node) {
   free(node->nreg);
   node->ASM = NULL;
   node->opC = NULL;
-  node->spe = NULL;
-  node->mOp = NULL;
+  node->sizeSpec = OPERAND_SIZE_NONE;
+  node->memKind = MEMORY_KIND_NONE;
+  node->memRegCount = 0;
+  node->memRegs[0] = 0;
+  node->memRegs[1] = 0;
+  node->memDisp = 0;
+  node->memDirect = 0;
   node->imm = NULL;
   node->operandCount = 0;
   node->operandKinds[0] = OPERAND_NONE;
@@ -161,6 +169,79 @@ void NodeAST_set_opcode(NodeAST *node, const char *opcode) {
   node->opC = dup_string(opcode);
 }
 
+void NodeAST_set_size_spec(NodeAST *node, OperandSize sizeSpec) {
+  node->sizeSpec = sizeSpec;
+}
+
+static OperandSize parse_operand_size_spec(const char *specifier) {
+  if (specifier == NULL)
+    return OPERAND_SIZE_NONE;
+  if (!strcmp(specifier, "byte"))
+    return OPERAND_SIZE_BYTE;
+  if (!strcmp(specifier, "short"))
+    return OPERAND_SIZE_SHORT;
+  return OPERAND_SIZE_NONE;
+}
+
+static int is_register_token(const char *token) {
+  return get_index(registers, ALL_REG_SIZE, token) != -1;
+}
+
+static void parse_memory_operand(NodeAST *node, const char *operand) {
+  char *copy = dup_string(operand);
+  size_t len = strlen(copy);
+
+  if (len >= 2 && copy[0] == '[' && copy[len - 1] == ']') {
+    copy[len - 1] = '\0';
+    memmove(copy, copy + 1, len - 1);
+  }
+
+  node->memKind = MEMORY_KIND_NONE;
+  node->memRegCount = 0;
+  node->memRegs[0] = 0;
+  node->memRegs[1] = 0;
+  node->memDisp = 0;
+  node->memDirect = 0;
+
+  char *cursor = copy;
+  int sign = 1;
+  while (*cursor != '\0') {
+    char *term = cursor;
+    while (*cursor != '\0' && *cursor != '+' && *cursor != '-')
+      cursor++;
+
+    char saved = *cursor;
+    *cursor = '\0';
+
+    if (*term != '\0') {
+      if (is_register_token(term)) {
+        if (node->memRegCount < 2)
+          node->memRegs[node->memRegCount++] =
+              get_index(registers, ALL_REG_SIZE, term);
+      } else {
+        long value = strtol(term, NULL, 16);
+        if (node->memRegCount == 0 && node->memKind == MEMORY_KIND_NONE) {
+          node->memKind = MEMORY_KIND_DIRECT;
+          node->memDirect = (uint16_t)value;
+        } else {
+          node->memDisp += (int16_t)(sign * value);
+          node->memKind = MEMORY_KIND_REGISTER;
+        }
+      }
+    }
+
+    if (saved == '\0')
+      break;
+    sign = (saved == '+') ? 1 : -1;
+    cursor++;
+  }
+
+  if (node->memRegCount > 0)
+    node->memKind = MEMORY_KIND_REGISTER;
+
+  free(copy);
+}
+
 void NodeAST_add_reg_operand(NodeAST *node, const char *operand,
                              size_t regIndex) {
   (void)operand;
@@ -181,25 +262,9 @@ void NodeAST_add_reg_operand(NodeAST *node, const char *operand,
 
 void NodeAST_add_mem_operand(NodeAST *node, const char *operand,
                              const char *specifier) {
-  size_t len = strlen(operand);
-  if (len >= 2 && operand[0] == '[' && operand[len - 1] == ']') {
-    char *copy = malloc(len - 1);
-    if (copy == NULL)
-      errx(1, "Can't allocate memory for the memory operand!");
-    memcpy(copy, operand + 1, len - 2);
-    copy[len - 2] = '\0';
-    free(node->mOp);
-    node->mOp = copy;
-  } else {
-    free(node->mOp);
-    node->mOp = dup_string(operand);
-  }
   node_add_operand_kind(node, OPERAND_MEM);
-
-  if (specifier != NULL) {
-    free(node->spe);
-    node->spe = dup_string(specifier);
-  }
+  node->sizeSpec = parse_operand_size_spec(specifier);
+  parse_memory_operand(node, operand);
 }
 
 void NodeAST_add_imm_operand(NodeAST *node, const char *operand,

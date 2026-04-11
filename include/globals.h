@@ -15,14 +15,32 @@ typedef enum {
   OPERAND_IMM,
 } OperandKind;
 
+typedef enum {
+  OPERAND_SIZE_NONE = 0,
+  OPERAND_SIZE_BYTE,
+  OPERAND_SIZE_SHORT,
+} OperandSize;
+
+typedef enum {
+  MEMORY_KIND_NONE = 0,
+  MEMORY_KIND_DIRECT,
+  MEMORY_KIND_REGISTER,
+} MemoryKind;
+
 typedef struct {
   size_t addr;
   char *ASM; // to remove
   char *opC;
   size_t opLen;
 
-  char *spe;
-  char *mOp;
+  OperandSize sizeSpec;
+
+  MemoryKind memKind;
+  size_t memRegCount;
+  size_t memRegs[2];
+  int16_t memDisp;
+  uint16_t memDirect;
+
   uint16_t *imm;
 
   size_t operandCount;
@@ -249,6 +267,7 @@ void vector_free(Vector *vector);
 void NodeAST_init(NodeAST *node);
 void NodeAST_free(NodeAST *node);
 void NodeAST_set_opcode(NodeAST *node, const char *opcode);
+void NodeAST_set_size_spec(NodeAST *node, OperandSize sizeSpec);
 void NodeAST_add_reg_operand(NodeAST *node, const char *operand,
                              size_t regIndex);
 void NodeAST_add_mem_operand(NodeAST *node, const char *operand,

@@ -135,10 +135,23 @@ void print_node(NodeAST *node) {
     printf("Operand %zu kind: %s\n", i + 1, kind);
   }
 
-  if (node->spe != NULL)
-    printf("Specifier: %s\n", node->spe);
-  if (node->mOp != NULL)
-    printf("Memory operand: %s\n", node->mOp);
+  if (node->sizeSpec == OPERAND_SIZE_BYTE)
+    printf("Specifier: byte\n");
+  else if (node->sizeSpec == OPERAND_SIZE_SHORT)
+    printf("Specifier: short\n");
+
+  if (node->memKind != MEMORY_KIND_NONE) {
+    printf("Memory kind: %s\n",
+           node->memKind == MEMORY_KIND_DIRECT ? "direct" : "register");
+    if (node->memKind == MEMORY_KIND_DIRECT)
+      printf("Memory direct: %04x\n", node->memDirect);
+    if (node->memRegCount > 0) {
+      for (size_t j = 0; j < node->memRegCount; j++)
+        printf("Memory reg %zu: %s\n", j, registers[node->memRegs[j]]);
+    }
+    if (node->memDisp != 0)
+      printf("Memory disp: %d\n", node->memDisp);
+  }
   if (node->imm != NULL)
     printf("Immediate data: %x\n", *(node->imm));
   if (node->regs != NULL) {
