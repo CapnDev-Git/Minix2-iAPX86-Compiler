@@ -62,9 +62,10 @@ void get_node(NodeAST *node, char *line) {
 
   // Initialize the new node with the static fields
   node->addr = strtoul(tokens[0], NULL, 16);
-  node->ASM = format_ASM(tokens, n);
-  node->opC = dup_string(tokens[2]); // instruction always at index 2
-  node->opLen = strlen(tokens[1]) / 2;
+  char *formatted = format_ASM(tokens, n);
+  NodeAST_finalize(node, formatted, strlen(tokens[1]) / 2);
+  free(formatted);
+  NodeAST_set_opcode(node, tokens[2]); // instruction always at index 2
 
   // Parse the rest of the tokens
   for (size_t j = 3; j < n; j++) {
@@ -75,58 +76,18 @@ void get_node(NodeAST *node, char *line) {
       /* MEMORY OPERAND (no process here since may need dereferencing) */
       // Remove the separator
       remove_separator(tokens[j]);
-
-      // Set it as the operand 1 if it's not already set, otherwise set it as
-      // the operand 2
-      if (node->op1 == NULL)
-        node->op1 = dup_string(tokens[j]);
-      else
-        node->op2 = dup_string(tokens[j]);
-
-      node->mOp = dup_string(tokens[j]);
+      NodeAST_add_mem_operand(node, tokens[j], node->spe);
     } else if (isHex(tokens[j]) || tokens[j][0] == '-') {
       /* IMMEDIATE DATA */
-
-      // Set it as the operand 1 if it's not already set, otherwise set it as
-      // the operand 2
-      if (node->op1 == NULL)
-        node->op1 = dup_string(tokens[j]);
-      else
-        node->op2 = dup_string(tokens[j]);
-
-      node->imm = malloc(sizeof(uint16_t));
-      if (node->imm == NULL)
-        errx(1, "Can't allocate memory for the immediate data!");
-
-      *(node->imm) = (uint16_t)strtol(tokens[j], NULL, 16);
+      NodeAST_add_imm_operand(node, tokens[j],
+                              (uint16_t)strtol(tokens[j], NULL, 16));
     } else {
       /* REGISTER(s) */
 
       // Remove the separator
       remove_separator(tokens[j]);
-
-      // Set it as the operand 1 if it's not already set, otherwise set it as
-      // the operand 2
-      if (node->op1 == NULL)
-        node->op1 = dup_string(tokens[j]);
-      else
-        node->op2 = dup_string(tokens[j]);
-
-      // Reallocate memory for the registers array
-      *(node->nreg) += 1;
-      size_t **new_regs = realloc(node->regs, *(node->nreg) * sizeof(size_t *));
-      if (new_regs == NULL)
-        errx(1, "Can't reallocate memory for the registers array!");
-      node->regs = new_regs;
-
-      // Allocate memory for the register index
-      node->regs[*(node->nreg) - 1] = malloc(sizeof(size_t));
-      if (node->regs[*(node->nreg) - 1] == NULL)
-        errx(1, "Can't allocate memory for the register index!");
-
-      // Get the register index
-      *(node->regs[*(node->nreg) - 1]) =
-          get_index(registers, ALL_REG_SIZE, tokens[j]);
+      NodeAST_add_reg_operand(node, tokens[j],
+                              get_index(registers, ALL_REG_SIZE, tokens[j]));
     }
   }
 

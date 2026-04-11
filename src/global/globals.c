@@ -94,14 +94,13 @@ void NodeAST_init(NodeAST *node) {
   node->opC = NULL;
   node->opLen = 0;
 
-  // Initialize the operands fields
-  node->op1 = NULL;
-  node->op2 = NULL;
-
   // Initialize the other fields
   node->spe = NULL;
   node->mOp = NULL;
   node->imm = NULL;
+  node->operandCount = 0;
+  node->operandKinds[0] = OPERAND_NONE;
+  node->operandKinds[1] = OPERAND_NONE;
 
   // Initialize the registers array
   node->nreg = malloc(sizeof(size_t));
@@ -113,6 +112,113 @@ void NodeAST_init(NodeAST *node) {
   if (node->regs == NULL)
     errx(1, "Can't allocate memory for the registers array!");
   *(node->regs) = NULL;
+}
+
+void NodeAST_free(NodeAST *node) {
+  free(node->ASM);
+  free(node->opC);
+  free(node->spe);
+  free(node->mOp);
+  free(node->imm);
+
+  if (node->regs != NULL) {
+    for (size_t j = 0; j < *(node->nreg); j++)
+      free(node->regs[j]);
+    free(node->regs);
+  }
+
+  free(node->nreg);
+  node->ASM = NULL;
+  node->opC = NULL;
+  node->spe = NULL;
+  node->mOp = NULL;
+  node->imm = NULL;
+  node->operandCount = 0;
+  node->operandKinds[0] = OPERAND_NONE;
+  node->operandKinds[1] = OPERAND_NONE;
+  node->regs = NULL;
+  node->nreg = NULL;
+}
+
+static char *dup_string(const char *source) {
+  size_t len = strlen(source) + 1;
+  char *copy = malloc(len);
+  if (copy == NULL)
+    errx(1, "Can't allocate memory for string duplication!");
+
+  memcpy(copy, source, len);
+  return copy;
+}
+
+static void node_add_operand_kind(NodeAST *node, OperandKind kind) {
+  if (node->operandCount < 2)
+    node->operandKinds[node->operandCount] = kind;
+  node->operandCount++;
+}
+
+void NodeAST_set_opcode(NodeAST *node, const char *opcode) {
+  free(node->opC);
+  node->opC = dup_string(opcode);
+}
+
+void NodeAST_add_reg_operand(NodeAST *node, const char *operand,
+                             size_t regIndex) {
+  (void)operand;
+  node_add_operand_kind(node, OPERAND_REG);
+
+  *(node->nreg) += 1;
+  size_t **new_regs = realloc(node->regs, *(node->nreg) * sizeof(size_t *));
+  if (new_regs == NULL)
+    errx(1, "Can't reallocate memory for the registers array!");
+  node->regs = new_regs;
+
+  node->regs[*(node->nreg) - 1] = malloc(sizeof(size_t));
+  if (node->regs[*(node->nreg) - 1] == NULL)
+    errx(1, "Can't allocate memory for the register index!");
+
+  *(node->regs[*(node->nreg) - 1]) = regIndex;
+}
+
+void NodeAST_add_mem_operand(NodeAST *node, const char *operand,
+                             const char *specifier) {
+  size_t len = strlen(operand);
+  if (len >= 2 && operand[0] == '[' && operand[len - 1] == ']') {
+    char *copy = malloc(len - 1);
+    if (copy == NULL)
+      errx(1, "Can't allocate memory for the memory operand!");
+    memcpy(copy, operand + 1, len - 2);
+    copy[len - 2] = '\0';
+    free(node->mOp);
+    node->mOp = copy;
+  } else {
+    free(node->mOp);
+    node->mOp = dup_string(operand);
+  }
+  node_add_operand_kind(node, OPERAND_MEM);
+
+  if (specifier != NULL) {
+    free(node->spe);
+    node->spe = dup_string(specifier);
+  }
+}
+
+void NodeAST_add_imm_operand(NodeAST *node, const char *operand,
+                             uint16_t value) {
+  (void)operand;
+  node_add_operand_kind(node, OPERAND_IMM);
+
+  free(node->imm);
+  node->imm = malloc(sizeof(uint16_t));
+  if (node->imm == NULL)
+    errx(1, "Can't allocate memory for the immediate data!");
+
+  *(node->imm) = value;
+}
+
+void NodeAST_finalize(NodeAST *node, const char *asmLine, size_t opLen) {
+  free(node->ASM);
+  node->ASM = dup_string(asmLine);
+  node->opLen = opLen;
 }
 
 void push16_stack(uint16_t val) {

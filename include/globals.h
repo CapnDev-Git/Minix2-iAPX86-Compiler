@@ -8,18 +8,25 @@
 #include <string.h>
 
 // AST node structure
+typedef enum {
+  OPERAND_NONE = 0,
+  OPERAND_REG,
+  OPERAND_MEM,
+  OPERAND_IMM,
+} OperandKind;
+
 typedef struct {
   size_t addr;
   char *ASM; // to remove
   char *opC;
   size_t opLen;
 
-  char *op1;
-  char *op2;
-
   char *spe;
   char *mOp;
   uint16_t *imm;
+
+  size_t operandCount;
+  OperandKind operandKinds[2];
 
   size_t *nreg;
   size_t **regs;
@@ -219,10 +226,10 @@ extern uint16_t IP;
 
 #define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
 #define BYTE_TO_BINARY(byte)                                                   \
-  ((byte)&0x80 ? '1' : '0'), ((byte)&0x40 ? '1' : '0'),                        \
-      ((byte)&0x20 ? '1' : '0'), ((byte)&0x10 ? '1' : '0'),                    \
-      ((byte)&0x08 ? '1' : '0'), ((byte)&0x04 ? '1' : '0'),                    \
-      ((byte)&0x02 ? '1' : '0'), ((byte)&0x01 ? '1' : '0')
+  ((byte) & 0x80 ? '1' : '0'), ((byte) & 0x40 ? '1' : '0'),                    \
+      ((byte) & 0x20 ? '1' : '0'), ((byte) & 0x10 ? '1' : '0'),                \
+      ((byte) & 0x08 ? '1' : '0'), ((byte) & 0x04 ? '1' : '0'),                \
+      ((byte) & 0x02 ? '1' : '0'), ((byte) & 0x01 ? '1' : '0')
 
 #define REGS_STATUS "%04x %04x %04x %04x %04x %04x %04x %04x "
 #define FLAGS_STATUS "%c%c%c%c "
@@ -240,6 +247,15 @@ void vector_free(Vector *vector);
 
 // NodeAST functions
 void NodeAST_init(NodeAST *node);
+void NodeAST_free(NodeAST *node);
+void NodeAST_set_opcode(NodeAST *node, const char *opcode);
+void NodeAST_add_reg_operand(NodeAST *node, const char *operand,
+                             size_t regIndex);
+void NodeAST_add_mem_operand(NodeAST *node, const char *operand,
+                             const char *specifier);
+void NodeAST_add_imm_operand(NodeAST *node, const char *operand,
+                             uint16_t value);
+void NodeAST_finalize(NodeAST *node, const char *asmLine, size_t opLen);
 
 // Stack functions
 void push16_stack(uint16_t val);

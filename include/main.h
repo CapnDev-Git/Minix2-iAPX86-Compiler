@@ -13,7 +13,6 @@
 #include "interpreter.h"
 #include "lexer.h"
 #include "memory.h"
-#include "parser.h"
 #include "patterns.h"
 #include "print_patterns.h"
 #include "prints.h"

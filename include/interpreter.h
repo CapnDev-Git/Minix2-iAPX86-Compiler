@@ -10,7 +10,6 @@
 #include "dump.h"
 #include "globals.h"
 #include "lexer.h"
-#include "parser.h"
 #include "prints.h"
 
 /// @brief Interpret the given node

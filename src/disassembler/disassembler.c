@@ -51,7 +51,7 @@ void disassemble() {
   size_t a = 0;
 
   // Array of function pointers to the opcodes
-  void (*opcodes[OPCODES_SIZE])(size_t, unsigned char) = {
+  void (*opcodes[OPCODES_SIZE])(size_t, unsigned char, NodeAST *) = {
       f0x0, f0x1, f0x2, f0x3, f0x4, f0x5, f0x6, f0x7,
       f0x8, f0x9, f0xa, f0xb, f0xc, f0xd, f0xe, f0xf};
 
@@ -92,19 +92,19 @@ void disassemble() {
       continue;
     }
 
+    NodeAST node;
+    NodeAST_init(&node);
+    node.addr = a;
+
     // Execute the corresponding opcode function
-    opcodes[op](a, text_mem[a] & 0b1111);
+    opcodes[op](a, text_mem[a] & 0b1111, &node);
 
     // Interpret the disassembled instruction if the flag is set
     if (INTERPRET || DEBUG) {
-      // Define the node
-      NodeAST node;
-      NodeAST_init(&node);
-
-      // Parse & interpret the node
-      get_node(&node, ASM[a]);
       interpret(&node);
     }
+
+    NodeAST_free(&node);
 
     // Update the address to go to IP (changed by opcode function / interpreter)
     a = IP;

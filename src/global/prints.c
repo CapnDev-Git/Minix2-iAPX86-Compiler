@@ -124,10 +124,16 @@ void print_node(NodeAST *node) {
   printf("ASM: %s\n", node->ASM);
   printf("Instruction: %s\n", node->opC);
 
-  if (node->op1 != NULL)
-    printf("Opcode 1: %s\n", node->op1);
-  if (node->op2 != NULL)
-    printf("Opcode 2: %s\n", node->op2);
+  for (size_t i = 0; i < node->operandCount && i < 2; i++) {
+    const char *kind = "none";
+    if (node->operandKinds[i] == OPERAND_REG)
+      kind = "reg";
+    else if (node->operandKinds[i] == OPERAND_MEM)
+      kind = "mem";
+    else if (node->operandKinds[i] == OPERAND_IMM)
+      kind = "imm";
+    printf("Operand %zu kind: %s\n", i + 1, kind);
+  }
 
   if (node->spe != NULL)
     printf("Specifier: %s\n", node->spe);

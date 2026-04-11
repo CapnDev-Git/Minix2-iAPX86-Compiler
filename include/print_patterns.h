@@ -19,7 +19,8 @@
 /// @param ea The effective address
 /// @param LSB4 The least significant 4 bits of the instruction
 /// @param ds The data size
-void printsw(size_t a, char *instr, char *ea, unsigned char LSB4, size_t *ds);
+void printsw(size_t a, char *instr, char *ea, unsigned char LSB4, size_t *ds,
+             NodeAST *node);
 
 /// @brief General purpose printing function for instructions using the vw flags
 /// @param a The address of the instruction
@@ -27,7 +28,8 @@ void printsw(size_t a, char *instr, char *ea, unsigned char LSB4, size_t *ds);
 
 /// @param LSB4 The least significant 4 bits of the instruction
 /// @param ds The data size
-void printvw(size_t a, char *instr, unsigned char LSB4, size_t *ds);
+void printvw(size_t a, char *instr, unsigned char LSB4, size_t *ds,
+             NodeAST *node);
 
 /// @brief General purpose printing function for instructions using the dw flags
 /// @param a The address of the instruction
@@ -35,7 +37,8 @@ void printvw(size_t a, char *instr, unsigned char LSB4, size_t *ds);
 
 /// @param LSB4 The least significant 4 bits of the instruction
 /// @param ds The data size
-void printdw(size_t a, char *instr, unsigned char LSB4, size_t *ds);
+void printdw(size_t a, char *instr, unsigned char LSB4, size_t *ds,
+             NodeAST *node);
 
 /// @brief General purpose printing function for instructions moving immediate
 /// data to accumulators
@@ -43,7 +46,7 @@ void printdw(size_t a, char *instr, unsigned char LSB4, size_t *ds);
 /// @param instr The instruction name
 /// @param w The w flag
 
-void print_immtoacc(size_t a, char *instr, unsigned char w);
+void print_immtoacc(size_t a, char *instr, unsigned char w, NodeAST *node);
 
 /// @brief General purpose printing function for instructions moving immediate
 /// to reg/memory
@@ -54,7 +57,7 @@ void print_immtoacc(size_t a, char *instr, unsigned char w);
 /// @param LSB4 The least significant 4 bits of the instruction
 /// @param ds The data size
 void print_immtorm(size_t a, char *instr, char *ea, unsigned char LSB4,
-                   size_t *ds);
+                   size_t *ds, NodeAST *node);
 
 /// @brief General purpose printing function for instructions get reg/memory
 /// from immediate data
@@ -65,7 +68,7 @@ void print_immtorm(size_t a, char *instr, char *ea, unsigned char LSB4,
 /// @param LSB4 The least significant 4 bits of the instruction
 /// @param ds The data size
 void print_rmtoimm(size_t a, char *instr, char *ea, unsigned char LSB4,
-                   size_t *ds);
+                   size_t *ds, NodeAST *node);
 
 /// @brief General purpose printing function for instructions using 16bits
 /// reg/memory
@@ -73,20 +76,20 @@ void print_rmtoimm(size_t a, char *instr, char *ea, unsigned char LSB4,
 /// @param instr The instruction name
 /// @param rm The rm field
 
-void print_rm16(size_t a, char *instr, unsigned char rm);
+void print_rm16(size_t a, char *instr, unsigned char rm, NodeAST *node);
 
 /// @brief General purpose printing function for conditional jumps instructions
 /// @param a The address of the instruction
 /// @param instr The instruction name
 
-void print_condjmps(size_t a, char *instr);
+void print_condjmps(size_t a, char *instr, NodeAST *node);
 
 /// @brief General purpose printing function for instructions using rep prefix
 /// @param a The address of the instruction
 /// @param instr The instruction name
 
 /// @param w The w flag
-void print_repmanip(size_t a, char *instr, unsigned char w);
+void print_repmanip(size_t a, char *instr, unsigned char w, NodeAST *node);
 
 /// @brief General purpose printing function for instructions only without any
 /// parameters
@@ -94,14 +97,14 @@ void print_repmanip(size_t a, char *instr, unsigned char w);
 /// @param instr The instruction name
 
 /// @param il The instruction length
-void print_single(size_t a, char *instr, size_t il);
+void print_single(size_t a, char *instr, size_t il, NodeAST *node);
 
 /// @brief General purpose printing function for instructions having fixed port
 /// @param a The address of the instruction
 /// @param instr The instruction name
 
 /// @param w The w flag
-void print_portfixed(size_t a, char *instr, unsigned char w);
+void print_portfixed(size_t a, char *instr, unsigned char w, NodeAST *node);
 
 /// @brief General purpose printing function for instructions having variable
 /// port
@@ -109,19 +112,19 @@ void print_portfixed(size_t a, char *instr, unsigned char w);
 /// @param instr The instruction name
 
 /// @param w The w flag
-void print_portvar(size_t a, char *instr, unsigned char w);
+void print_portvar(size_t a, char *instr, unsigned char w, NodeAST *node);
 
 /// @brief General purpose printing function for loops instructions
 /// @param a The address of the instruction
 /// @param instr The instruction name
 
-void print_loop(size_t a, char *instr);
+void print_loop(size_t a, char *instr, NodeAST *node);
 
 /// @brief General purpose printing function for call/jmp instructions
 /// @param a The address of the instruction
 /// @param instr The instruction name
 
-void print_calljmp(size_t a, char *instr);
+void print_calljmp(size_t a, char *instr, NodeAST *node);
 
 /// @brief General purpose printing function for string manipulation
 /// instructions
@@ -129,7 +132,7 @@ void print_calljmp(size_t a, char *instr);
 /// @param instr The instruction name
 /// @param w The w flag
 
-void print_stringmanip(size_t a, char *instr, unsigned char w);
+void print_stringmanip(size_t a, char *instr, unsigned char w, NodeAST *node);
 
 /// @brief General purpose printing function for instructions using the w flag
 /// and starting with 0xf
@@ -139,7 +142,8 @@ void print_stringmanip(size_t a, char *instr, unsigned char w);
 /// @param ea The effective address
 /// @param LSB4 The least significant 4 bits of the instruction
 /// @param ds The data size
-void print_fw(size_t a, char *instr, char *ea, unsigned char LSB4, size_t *ds);
+void print_fw(size_t a, char *instr, char *ea, unsigned char LSB4, size_t *ds,
+              NodeAST *node);
 
 /// @brief General purpose printing function for instructions depending on the
 /// rm field
@@ -148,4 +152,4 @@ void print_fw(size_t a, char *instr, char *ea, unsigned char LSB4, size_t *ds);
 
 /// @param ea The effective address
 /// @param ds The data size
-void print_frm(size_t a, char *instr, char *ea, size_t *ds);
+void print_frm(size_t a, char *instr, char *ea, size_t *ds, NodeAST *node);

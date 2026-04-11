@@ -129,9 +129,11 @@ uint16_t process_memory_operand(NodeAST *node) {
     return 0;
   }
 
-  // Remove the brackets from the memory operand
-  copiedOp[len - 1] = '\0';
-  char *operand = copiedOp + 1;
+  char *operand = copiedOp;
+  if (copiedOp[0] == '[' && copiedOp[len - 1] == ']') {
+    copiedOp[len - 1] = '\0';
+    operand = copiedOp + 1;
+  }
 
   // Check if the memory operand contains a "+" or "-" sign
   char *opstr = strchr(operand, '+');
@@ -211,6 +213,9 @@ int interpret(NodeAST *node) {
   free(memory_content);
 
   // Interpret the instruction
+  OperandKind op1Kind =
+      node->operandCount > 0 ? node->operandKinds[0] : OPERAND_NONE;
+
   switch (get_index(instructions, INSTR_SIZE, node->opC)) {
   case ADD:
     // ADD r16, r16
@@ -228,7 +233,7 @@ int interpret(NodeAST *node) {
 
     // ADD r16, mOp
     if (*(node->nreg) == 1 && node->mOp != NULL) {
-      if (!strcmp(node->op1, node->mOp)) {
+      if (op1Kind == OPERAND_MEM) {
         process_operation((uint16_t *)(data_mem + mOp), &regs[*(node->regs[0])],
                           OP_PLUS);
         return EXIT_CONTINUE;
@@ -305,7 +310,7 @@ int interpret(NodeAST *node) {
     }
 
     if (node->mOp != NULL && *(node->nreg) == 1) {
-      if (!strcmp(node->op1, node->mOp)) {
+      if (op1Kind == OPERAND_MEM) {
         // CMP mOp, r16
         process_operation((uint16_t *)(data_mem + mOp), &regs[*(node->regs[0])],
                           OP_CMP);
@@ -526,7 +531,7 @@ int interpret(NodeAST *node) {
     }
 
     if (*(node->nreg) == 1 && node->mOp != NULL) {
-      if (!strcmp(node->op1, node->mOp)) {
+      if (op1Kind == OPERAND_MEM) {
         if (*(node->regs[0]) < 8) {
           // MOV mOp, r16
           memcpy(data_mem + mOp, regs + *(node->regs[0]), 2);
