@@ -151,7 +151,6 @@ char *get_memory_content(unsigned char *data, size_t addr, int r8) {
   // Free the original content
   free(content);
 
-  // Set the final formatted string back to node->mOp
   return copiedContent;
 }
 
@@ -639,7 +638,6 @@ int interpret(NodeAST *node) {
 
     // SUB r16, mOp
     if (*(node->nreg) == 1 && node->memKind != MEMORY_KIND_NONE) {
-      // uint16_t *op1_ptr = (uint16_t *)(regs + *(node->regs[0]));
       process_operation(&regs[*(node->regs[0])], (uint16_t *)(data_mem + mOp),
                         OP_MINUS);
       return EXIT_CONTINUE;
