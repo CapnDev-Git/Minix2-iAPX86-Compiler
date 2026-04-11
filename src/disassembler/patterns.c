@@ -6,7 +6,6 @@ unsigned char mod, reg, rm;
 size_t ds = 0;
 
 void f0x0(size_t a, unsigned char LSB4) {
-  char line[256];
   if (((LSB4 >> 3) & 0b1)) {
     if ((LSB4 >> 2) & 0b1) {
       // OR: imm -> acc
@@ -27,7 +26,6 @@ void f0x0(size_t a, unsigned char LSB4) {
 }
 
 void f0x1(size_t a, unsigned char LSB4) {
-  char line[256];
   switch ((LSB4 >> 2) & 0b11) {
   case 0b00:
     // ADC: r/m & reg <->
@@ -105,7 +103,6 @@ void f0x2(size_t a, unsigned char LSB4) {
 }
 
 void f0x3(size_t a, unsigned char LSB4) {
-  char line[256];
   switch (LSB4 & 0b1111) {
   case 0xf:
     // AAS
@@ -139,9 +136,6 @@ void f0x3(size_t a, unsigned char LSB4) {
 }
 
 void f0x4(size_t a, unsigned char LSB4) {
-  char line[256];
-  char *ea = malloc(EA_STRING_SIZE * sizeof(unsigned char));
-
   if ((LSB4 >> 3) & 0b1) {
     // DEC: r/m
     print_rm16(a, "dec", LSB4 & 0b111);
@@ -149,14 +143,9 @@ void f0x4(size_t a, unsigned char LSB4) {
     // INC: r/m
     print_rm16(a, "inc", LSB4 & 0b111);
   }
-
-  free(ea);
 }
 
 void f0x5(size_t a, unsigned char LSB4) {
-  char line[256];
-  char *ea = malloc(EA_STRING_SIZE * sizeof(unsigned char));
-
   if ((LSB4 >> 3) & 0b1) {
     // POP: reg
     print_rm16(a, "pop", LSB4 & 0b111);
@@ -164,22 +153,14 @@ void f0x5(size_t a, unsigned char LSB4) {
     // PUSH: reg
     print_rm16(a, "push", LSB4 & 0b111);
   }
-
-  free(ea);
 }
 
 void f0x6(size_t a, unsigned char LSB4) {
-  char line[256];
-  char *ea = malloc(EA_STRING_SIZE * sizeof(unsigned char));
   LSB4 &= 0b111; // to remove unused variable warning
   print_single(a, "(undefined)", 1);
-  free(ea);
 }
 
 void f0x7(size_t a, unsigned char LSB4) {
-  char line[256];
-  char *ea = malloc(EA_STRING_SIZE * sizeof(unsigned char));
-
   switch (LSB4 & 0b1111) {
   case 0x0:
     // JO
@@ -264,8 +245,6 @@ void f0x7(size_t a, unsigned char LSB4) {
     print_condjmps(a, "jnle");
     break;
   }
-
-  free(ea);
 }
 
 void f0x8(size_t a, unsigned char LSB4) {
@@ -290,6 +269,7 @@ void f0x8(size_t a, unsigned char LSB4) {
 
   case 0xf:
     // POP: r/m
+    print4b(text_mem, a, 2, line);
     IP += 2;
     sprintf(line + strlen(line),
             "0x8f is not implemented"); // should be POP r/m
@@ -709,7 +689,6 @@ void f0xc(size_t a, unsigned char LSB4) {
 }
 
 void f0xd(size_t a, unsigned char LSB4) {
-  char line[256]; // ESC not matched
   switch (LSB4 & 0b1111) {
   case 0x4:
     // AAM
@@ -776,9 +755,6 @@ void f0xd(size_t a, unsigned char LSB4) {
 }
 
 void f0xe(size_t a, unsigned char LSB4) {
-  char line[256];
-  char *ea = malloc(EA_STRING_SIZE * sizeof(unsigned char));
-
   switch ((LSB4 >> 1) & 0b111) {
   case 0b010:
     // IN: fixed port
@@ -843,8 +819,6 @@ void f0xe(size_t a, unsigned char LSB4) {
     }
     break;
   }
-
-  free(ea);
 }
 
 void f0xf(size_t a, unsigned char LSB4) {

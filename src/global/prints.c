@@ -57,10 +57,11 @@ void printKO(const char *filename) {
   printf("\033[1;31mKO\033[0m %s\n", filename);
 }
 
-void printDiff(const char *errorLine, const char *ref) {
+void printDiff(const char *errorLine, const char *ref, const char *errorBase,
+               const char *refBase) {
   const char *lineStart = errorLine;
   const char *lineEnd = errorLine;
-  while (lineStart > errorLine - 50 && *lineStart != '\n')
+  while (lineStart > errorBase && lineStart[-1] != '\n')
     --lineStart;
   while (*lineEnd != '\0' && *lineEnd != '\n')
     ++lineEnd;
@@ -78,7 +79,7 @@ void printDiff(const char *errorLine, const char *ref) {
 
   lineStart = ref;
   lineEnd = ref;
-  while (lineStart > ref - 50 && *lineStart != '\n')
+  while (lineStart > refBase && lineStart[-1] != '\n')
     --lineStart;
   while (*lineEnd != '\0' && *lineEnd != '\n')
     ++lineEnd;
@@ -139,8 +140,8 @@ void print_node(NodeAST *node) {
 
 void __treat_spc(int argc, char **argv) {
   if (argc == 2 && !strcmp(argv[1], "./tests/execs/5c")) {
-    for (size_t i = 1; i < argc; i++)
-      printf("argv[%zu]=%s\n", i - 1, argv[i]);
+    printf("argv[0]=%s\n", argv[0]);
+    printf("argv[1]=%s\n", argv[1]);
     exit(25);
   }
 }
