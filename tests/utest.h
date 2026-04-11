@@ -11,7 +11,6 @@
 
 #define MAX_LENGTH 1000000
 
-char *get_cout(const char *command);
-void cmp_files(const char *filename, int verbose, int interpret);
-void cmp_files_dir(const char *directory, int verbose, int interpret);
+void run_compare_file(const char *filename, int verbose, int interpret);
+void run_compare_directory(const char *directory, int verbose, int interpret);
 int main(int argc, char **argv);

@@ -29,7 +29,8 @@ $(shell mkdir -p $(ODIR) $(SRCDIRS:$(SRCDIR)%=$(ODIR)%))
 $(ODIR)/%.o: $(SRCDIR)/%.c
 	$(CC) -c -o $@ $< $(CFLAGS)
 
-$(ODIR)/%.o: $(TESTDIR)/%.c $(INCDIR)/prints.h $(INCDIR)/globals.h $(TESTDIR)/utest.h
+
+$(ODIR)/%.o: $(TESTDIR)/%.c $(INCDIR)/prints.h $(INCDIR)/globals.h $(TESTDIR)/utest.h $(TESTDIR)/utest_runner.h
 	$(CC) -c -o $@ $< $(CFLAGS)
 
 # Targets
