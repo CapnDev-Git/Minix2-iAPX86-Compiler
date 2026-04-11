@@ -1,10 +1,16 @@
 #include "main.h"
 
 int main(int argc, char **argv) {
+  if (argc < 2)
+    errx(1, "Usage: %s [-d|-m] <file>", argv[0]);
+
+  if (argv[1][0] == '-' && strcmp(argv[1], "-d") && strcmp(argv[1], "-m"))
+    errx(1, "Invalid flag: %s", argv[1]);
+
   // Check the flag & process the file accordingly
   if (!strcmp(argv[1], "-d")) {
     // Exit of no file to dump provided
-    if (argc == 2)
+    if (argc < 3)
       errx(1, "File to dump not provided.\nUsage: %s -d <file>", argv[0]);
 
     // Set the flag to dump
@@ -47,4 +53,6 @@ int main(int argc, char **argv) {
     }
     return EXIT_SUCCESS;
   }
+
+  return EXIT_SUCCESS;
 }

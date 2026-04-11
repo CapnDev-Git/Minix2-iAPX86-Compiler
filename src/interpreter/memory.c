@@ -3,7 +3,7 @@
 Vector get_args(int argc, char **argv) {
   Vector args;
   vector_init(&args);
-  for (size_t i = 2; i < argc; ++i)
+  for (int i = 2; i < argc; ++i)
     vector_pushback(&args, argv[i]);
   return args;
 }
@@ -17,7 +17,7 @@ Vector get_envp() {
 
 void process_args(Vector *args, Vector *envp) {
   // Retrieve the first environment variable
-  const unsigned char *env = envp->data[0];
+  const char *env = envp->data[0];
   uint16_t env_head;
 
   // Define a vector to store the addresses of the arguments
@@ -25,7 +25,7 @@ void process_args(Vector *args, Vector *envp) {
   vector_init(&addr);
 
   // Calculate the length of the environment variable string + 1 for \0
-  uint16_t len = strlen(env) + 1;
+  size_t len = strlen(env) + 1;
 
   // Calculate the length of each argument string + 1 for \0
   for (size_t i = 0; i < args->size; ++i)
@@ -37,17 +37,16 @@ void process_args(Vector *args, Vector *envp) {
 
   // Push the environment variable onto the stack in reverse order
   data_mem[--(*sp)] = '\0'; // Separator between char & env pointer
-  for (int i = strlen(env) - 1; i >= 0; --i) {
-    data_mem[--(*sp)] = env[i]; // Push in reverse order to the
-  }
+  for (size_t i = strlen(env); i > 0; --i)
+    data_mem[--(*sp)] = env[i - 1];
   env_head = *sp; // Store the address of the environment variable
 
   // Push every argument onto the stack in reverse order (separated by '\0')
-  for (int i = args->size - 1; i >= 0; --i) {
-    const unsigned char *arg = args->data[i];
+  for (size_t i = args->size; i > 0; --i) {
+    const char *arg = args->data[i - 1];
     data_mem[--(*sp)] = '\0'; // Add a null terminator between arguments
-    for (int j = strlen(arg) - 1; j >= 0; --j)
-      data_mem[--(*sp)] = arg[j]; // Push in reverse order to the stack
+    for (size_t j = strlen(arg); j > 0; --j)
+      data_mem[--(*sp)] = arg[j - 1];
     vector_pushback(&addr, (void *)(uintptr_t)(*sp));
   }
 
@@ -68,6 +67,8 @@ void process_args(Vector *args, Vector *envp) {
 
   // Push the number of arguments onto the stack
   push16_stack(args->size);
+
+  vector_free(&addr);
 }
 
 void setup_memory(int argc, char **argv) {
