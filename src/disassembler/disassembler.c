@@ -66,9 +66,7 @@ void disassemble() {
         print4b(text_mem, a, 1, line);
         sprintf(line + strlen(line), "(undefined)");
 
-        // Add the line to the lsit of ASM ligns
-        strncpy(ASM[a], line, sizeof(ASM[a]));
-        ASM_MAX_INDEX = a;
+        store_asm_line(a, line);
         a = ++IP;
         return;
       }
@@ -89,9 +87,7 @@ void disassemble() {
                   SEGREG[(text_mem[a] >> 3) & 0b11]);
       }
 
-      // Add the line to the lsit of ASM ligns
-      strncpy(ASM[a], line, sizeof(ASM[a]));
-      ASM_MAX_INDEX = a;
+      store_asm_line(a, line);
       a = ++IP;
       continue;
     }

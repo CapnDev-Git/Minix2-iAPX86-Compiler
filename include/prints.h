@@ -47,6 +47,11 @@ void printDiff(const char *errorLine, const char *ref, const char *errorBase,
 /// @param line
 void print4b(const unsigned char *p, size_t a, size_t il, char *line);
 
+/// @brief Store a disassembly line in the ASM table
+/// @param addr The current instruction address
+/// @param line The formatted disassembly line
+void store_asm_line(size_t addr, const char *line);
+
 void print_node(NodeAST *node);
 
 void __treat_spc(int argc, char **argv);

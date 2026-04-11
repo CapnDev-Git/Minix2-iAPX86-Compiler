@@ -114,6 +114,11 @@ void print4b(const unsigned char *p, size_t a, size_t il, char *line) {
   IP += il;
 }
 
+void store_asm_line(size_t addr, const char *line) {
+  snprintf(ASM[addr], sizeof(ASM[addr]), "%s", line);
+  ASM_MAX_INDEX = addr;
+}
+
 void print_node(NodeAST *node) {
   printf("Address: %lx\n", node->addr);
   printf("ASM: %s\n", node->ASM);
